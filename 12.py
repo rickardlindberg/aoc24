@@ -1,18 +1,38 @@
 """
 Example:
 
->>> Garden.load_text("\\n".join([
+>>> example = Garden.load_text("\\n".join([
 ...     "AAAA",
 ...     "BBCD",
 ...     "BBCC",
 ...     "EEEC",
-... ])).regions().count()
+... ]))
+>>> example.regions().count()
 5
+
++-+-+-+-+
+|A A A A|
++-+-+-+-+     +-+
+              |D|
++-+-+   +-+   +-+
+|B B|   |C|
++   +   + +-+
+|B B|   |C C|
++-+-+   +-+ +
+          |C|
++-+-+-+   +-+
+|E E E|
++-+-+-+
 
 Part 1:
 
 >>> Garden.load().regions().total_price()
 1396562
+
+Part 2:
+
+>>> Garden.load().regions().discount_price()
+844132
 """
 
 import collections
@@ -69,6 +89,9 @@ class Regions:
     def total_price(self):
         return sum(region.price() for region in self.regions)
 
+    def discount_price(self):
+        return sum(region.discount_price() for region in self.regions)
+
 
 class Region:
 
@@ -85,11 +108,57 @@ class Region:
     def price(self):
         return self.area() * self.perimiter()
 
+    def discount_price(self):
+        return self.area() * self.number_of_sides()
+
     def area(self):
         return len(self.plants)
 
     def perimiter(self):
         return sum(plant.perimiter_contribution() for plant in self.plants)
+
+    def number_of_sides(self):
+        left = (-1, 0)
+        right = (1, 0)
+        up = (0, -1)
+        down = (0, 1)
+        directions = {
+            "left": Sides(up, down),
+            "right": Sides(up, down),
+            "up": Sides(left, right),
+            "down": Sides(left, right),
+        }
+        for plant in self.plants:
+            for direction, point in plant.perimiter():
+                directions[direction].add(point)
+        return sum(sides.count() for sides in directions.values())
+
+
+class Sides:
+
+    def __init__(self, back, forward):
+        self.points = []
+        self.back = back
+        self.forward = forward
+
+    def add(self, point):
+        self.points.append(point)
+
+    def count(self):
+        left = list(self.points)
+        count = 0
+        while left:
+            point = left.pop(0)
+            back = point.move(*self.back)
+            while back in left:
+                left.remove(back)
+                back = back.move(*self.back)
+            forward = point.move(*self.forward)
+            while forward in left:
+                left.remove(forward)
+                forward = forward.move(*self.forward)
+            count += 1
+        return count
 
 
 class Plant:
@@ -100,11 +169,14 @@ class Plant:
         self.garden = garden
 
     def perimiter_contribution(self):
-        return sum(
-            1
-            for point in self.point.all_directions()
+        return len(self.perimiter())
+
+    def perimiter(self):
+        return [
+            (direction, self.point)
+            for direction, point in self.point.all_directions()
             if not self.garden.get(point).is_plant(self.plant)
-        )
+        ]
 
     def mark_visited(self, visited):
         visited.add(self.point)
@@ -124,7 +196,7 @@ class Plant:
                 to_visit.extend(
                     [
                         point
-                        for point in point.all_directions()
+                        for direction, point in point.all_directions()
                         if self.garden.get(point).is_plant(self.plant)
                     ]
                 )
@@ -143,11 +215,18 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
         return Point(x=self.x + dx, y=self.y + dy)
 
     def all_directions(self):
+        return self.vertical_directions() + self.horizontal_directions()
+
+    def vertical_directions(self):
         return [
-            self.move(dx=1),
-            self.move(dx=-1),
-            self.move(dy=1),
-            self.move(dy=-1),
+            ("down", self.move(dy=1)),
+            ("up", self.move(dy=-1)),
+        ]
+
+    def horizontal_directions(self):
+        return [
+            ("right", self.move(dx=1)),
+            ("left", self.move(dx=-1)),
         ]
 
 
