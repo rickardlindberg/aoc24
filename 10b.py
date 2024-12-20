@@ -1,8 +1,4 @@
-"""
-"""
-
 import collections
-import doctest
 
 
 class TopographicMap:
@@ -44,12 +40,6 @@ class Cells:
 
     def sum_ratings(self):
         return sum(cell.get_rating() for cell in self.cells)
-
-
-class CellOutsideMap:
-
-    def has_height(self, height):
-        return False
 
 
 class Cell:
@@ -94,6 +84,12 @@ class Cell:
         return f"Cell(point={self.point!r}, height={self.height!r})"
 
 
+class CellOutsideMap:
+
+    def has_height(self, height):
+        return False
+
+
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
     def directions(self):
@@ -110,5 +106,4 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
 
 print(TopographicMap.load().get_trailheads().sum_scores())
 print(TopographicMap.load().get_trailheads().sum_ratings())
-doctest.testmod()
 print("OK")
