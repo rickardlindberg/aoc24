@@ -1,42 +1,33 @@
 """
-A*94=8400
-A*34=5400
-B*22=8400
-B*67=5400
+Part 1:
 
-8400 = A*94 + B*22
-
-B =
-
-5400 = A*34 + B*67
-
-5400 = A*34 + ((8400 - A*94) / 22)*67
-
->>> ClawMachines.load().total_token_prices_for_wins()
+>>> ClawMachines.load(price_addition=0).total_token_prices_for_wins()
 39748
+
+Part 2:
+
+>>> ClawMachines.load(price_addition=10000000000000).total_token_prices_for_wins()
+74478585072604
 """
 
 import collections
 import doctest
 import re
-import sys
-
-sys.setrecursionlimit(100000000)
 
 
 class ClawMachines:
 
     @classmethod
-    def load(cls):
+    def load(cls, price_addition):
         with open("13.txt") as f:
-            return cls.load_text(f.read())
+            return cls.load_text(f.read(), price_addition)
 
     @classmethod
-    def load_text(cls, text):
+    def load_text(cls, text, price_addition):
         claw_machines = cls()
         lines = text.splitlines()
         while lines:
-            claw_machines.add(ClawMachine.from_lines(lines))
+            claw_machines.add(ClawMachine.from_lines(lines, price_addition))
             while lines and lines[0].strip() == "":
                 lines.pop(0)
         return claw_machines
@@ -54,7 +45,7 @@ class ClawMachines:
 class ClawMachine:
 
     @classmethod
-    def from_lines(cls, lines):
+    def from_lines(cls, lines, price_addition):
         a_regex = r"Button A: X[+](\d+), Y[+](\d+)"
         b_regex = r"Button B: X[+](\d+), Y[+](\d+)"
         prize_regex = r"Prize: X=(\d+), Y=(\d+)"
@@ -67,7 +58,7 @@ class ClawMachine:
         return ClawMachine(
             a=Point.from_re_match(a_match),
             b=Point.from_re_match(b_match),
-            prize=Point.from_re_match(prize_match),
+            prize=Point.from_re_match(prize_match).add_both(price_addition),
         )
 
     def __init__(self, a, b, prize):
@@ -77,11 +68,30 @@ class ClawMachine:
         self.cache = {}
 
     def token_prizes_for_win(self):
-        tokens = self.minimize_win_from(Tokens.empty(), Point(0, 0))
-        if tokens:
-            return tokens.a * 3 + tokens.b
-        else:
-            return 0
+        """
+        Equation 1:
+
+        a*self.a.x + b*self.b.x == self.price.x
+
+        a = (self.price.x - b*self.b.x) / self.a.x
+
+        Equation 2:
+
+        a*self.a.y + b*self.b.y == self.price.y
+
+        b = (self.price.y - a*self.a.y) / self.b.y
+        """
+        b_top = self.prize.y * self.a.x - self.prize.x * self.a.y
+        b_bottom = self.a.x * self.b.y - self.b.x * self.a.y
+        if b_top % b_bottom == 0:
+            b = b_top // b_bottom
+            a_top = self.prize.x - b * self.b.x
+            a_bottom = self.a.x
+            if a_top % a_bottom == 0:
+                a = a_top // a_bottom
+                if a >= 0 and b >= 0:
+                    return a * 3 + b
+        return 0
 
     def minimize_win_from(self, tokens, point):
         def do():
@@ -126,6 +136,9 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
 
     def add(self, other):
         return Point(x=self.x + other.x, y=self.y + other.y)
+
+    def add_both(self, distance):
+        return Point(x=self.x + distance, y=self.y + distance)
 
 
 doctest.testmod()
