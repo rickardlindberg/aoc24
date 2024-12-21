@@ -1,12 +1,12 @@
 """
 Part 1:
 
->>> ClawMachines.load(price_addition=0).total_token_prices_for_wins()
+>>> ClawMachines.load().total_token_prices_for_wins()
 39748
 
 Part 2:
 
->>> ClawMachines.load(price_addition=10000000000000).total_token_prices_for_wins()
+>>> ClawMachines.load().increase_prize_distance(10000000000000).total_token_prices_for_wins()
 74478585072604
 """
 
@@ -18,22 +18,27 @@ import re
 class ClawMachines:
 
     @classmethod
-    def load(cls, price_addition):
+    def load(cls):
         with open("13.txt") as f:
-            return cls.load_text(f.read(), price_addition)
+            return cls.load_text(f.read())
 
     @classmethod
-    def load_text(cls, text, price_addition):
+    def load_text(cls, text):
         claw_machines = cls()
         lines = text.splitlines()
         while lines:
-            claw_machines.add(ClawMachine.from_lines(lines, price_addition))
+            claw_machines.add(ClawMachine.from_lines(lines))
             while lines and lines[0].strip() == "":
                 lines.pop(0)
         return claw_machines
 
     def __init__(self):
         self.machines = []
+
+    def increase_prize_distance(self, distance):
+        for machine in self.machines:
+            machine.increase_prize_distance(distance)
+        return self
 
     def add(self, claw_machine):
         self.machines.append(claw_machine)
@@ -45,7 +50,7 @@ class ClawMachines:
 class ClawMachine:
 
     @classmethod
-    def from_lines(cls, lines, price_addition):
+    def from_lines(cls, lines):
         a_regex = r"Button A: X[+](\d+), Y[+](\d+)"
         b_regex = r"Button B: X[+](\d+), Y[+](\d+)"
         prize_regex = r"Prize: X=(\d+), Y=(\d+)"
@@ -58,14 +63,16 @@ class ClawMachine:
         return ClawMachine(
             a=Point.from_re_match(a_match),
             b=Point.from_re_match(b_match),
-            prize=Point.from_re_match(prize_match).add_both(price_addition),
+            prize=Point.from_re_match(prize_match),
         )
 
     def __init__(self, a, b, prize):
         self.a = a
         self.b = b
         self.prize = prize
-        self.cache = {}
+
+    def increase_prize_distance(self, distance):
+        self.prize = self.prize.move(dx=distance, dy=distance)
 
     def token_prizes_for_win(self):
         """
@@ -93,37 +100,6 @@ class ClawMachine:
                     return a * 3 + b
         return 0
 
-    def minimize_win_from(self, tokens, point):
-        def do():
-            if self.prize == point:
-                return tokens
-            elif point.is_less_than(self.prize):
-                sub_tokens = self.minimize_win_from(tokens.inc_a(), point.add(self.a))
-                if sub_tokens:
-                    return sub_tokens
-                sub_tokens = self.minimize_win_from(tokens.inc_b(), point.add(self.b))
-                if sub_tokens:
-                    return sub_tokens
-            return None
-
-        key = (tokens, point)
-        if key not in self.cache:
-            self.cache[key] = do()
-        return self.cache[key]
-
-
-class Tokens(collections.namedtuple("Tokens", ["a", "b"])):
-
-    @classmethod
-    def empty(cls):
-        return cls(0, 0)
-
-    def inc_a(self):
-        return self._replace(a=self.a + 1)
-
-    def inc_b(self):
-        return self._replace(b=self.b + 1)
-
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
@@ -137,11 +113,9 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
     def add(self, other):
         return Point(x=self.x + other.x, y=self.y + other.y)
 
-    def add_both(self, distance):
-        return Point(x=self.x + distance, y=self.y + distance)
+    def move(self, dx, dy):
+        return Point(x=self.x + dx, y=self.y + dy)
 
 
 doctest.testmod()
 print("OK")
-
-# 59004 too high
