@@ -11,6 +11,10 @@ Part 1:
 
 >>> Robots.load().elapse(100).safety_factor()
 222901875
+
+Part 2:
+
+>>> Robots.load().find_christmas_tree_iterations()
 """
 
 import collections
@@ -36,6 +40,34 @@ class Robots:
         self.robots = list(robots)
         self.width = width
         self.height = height
+
+    def find_christmas_tree_iterations(self):
+        iterations = 0
+        while not self.is_christmas_tree():
+            self.elapse(1)
+            iterations += 1
+        self.print()
+        return iterations
+
+    def is_christmas_tree(self):
+        return True
+
+    def print(self):
+        counts = {}
+        for robot in self.robots:
+            counts[robot.position] = counts.get(robot.position, 0) + 1
+        for y in range(self.height):
+            chars = []
+            for x in range(self.width):
+                point = Point(x, y)
+                if point in counts:
+                    if counts[point] <= 9:
+                        chars.append(str(counts[point]))
+                    else:
+                        chars.append("X")
+                else:
+                    chars.append(".")
+            print("".join(chars))
 
     def add(self, robot):
         self.robots.append(robot)
