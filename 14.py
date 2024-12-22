@@ -7,6 +7,9 @@ Robot(position=Point(x=41, y=24), velocity=Point(x=-55, y=25)
 >>> Point(2, 4).add(Point(2, -3)).add(Point(2, -3)).wrap(11, 7)
 Point(x=6, y=5)
 
+>>> Robots.load().count_repetitive()
+{10403}
+
 Part 1:
 
 >>> Robots.load().elapse(100).safety_factor()
@@ -14,7 +17,7 @@ Part 1:
 
 Part 2:
 
->>> Robots.load().find_christmas_tree_iterations()
+>>> Robots.load().elapse(6243).print()
 """
 
 import collections
@@ -52,6 +55,19 @@ class Robots:
     def is_christmas_tree(self):
         return True
 
+    def draw(self, context):
+        size = 3
+        counts = {}
+        for robot in self.robots:
+            counts[robot.position] = counts.get(robot.position, 0) + 1
+        for y in range(self.height):
+            chars = []
+            for x in range(self.width):
+                point = Point(x, y)
+                if point in counts:
+                    context.rectangle(x * size, y * size, size, size)
+                    context.fill()
+
     def print(self):
         counts = {}
         for robot in self.robots:
@@ -76,6 +92,11 @@ class Robots:
         for robot in self.robots:
             robot.elapse(seconds, self.width, self.height)
         return self
+
+    def count_repetitive(self):
+        return set(
+            [robot.count_repetitive(self.width, self.height) for robot in self.robots]
+        )
 
     def quadrants(self):
         XXX = Rectangle(Point(0, 0), Point(self.width, self.height))
@@ -122,6 +143,15 @@ class Robot:
     def elapse(self, seconds, width, height):
         for _ in range(seconds):
             self.position = self.position.add(self.velocity).wrap(width, height)
+
+    def count_repetitive(self, width, height):
+        position = self.position
+        count = 0
+        while True:
+            position = position.add(self.velocity).wrap(width, height)
+            count += 1
+            if position == self.position:
+                return count
 
     def __repr__(self):
         return f"Robot(position={self.position}, velocity={self.velocity!r}"
@@ -175,5 +205,40 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
         return Point(x=new_x, y=new_y)
 
 
+def simulate():
+    x = {0: 0}
+
+    def draw(widget, context):
+        print(x[0])
+        context.set_source_rgb(1, 0.7, 1)
+        context.paint()
+        context.set_source_rgb(0, 0, 0)
+        robots.draw(context)
+        robots.elapse(1)
+        x[0] += 1
+        canvas.queue_draw()
+        import time
+
+        time.sleep(4.9)
+
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gtk
+    from gi.repository import Gdk
+
+    robots = Robots.load()
+    robots.elapse(6243)
+
+    window = Gtk.Window()
+    window.connect("destroy", Gtk.main_quit)
+    canvas = Gtk.DrawingArea()
+    canvas.connect("draw", draw)
+    window.add(canvas)
+    window.show_all()
+    Gtk.main()
+
+
 doctest.testmod()
 print("OK")
+# simulate()
