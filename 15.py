@@ -17,38 +17,32 @@ class Warehouse:
     @classmethod
     def load_text(cls, text):
         warehouse = cls()
-        objects, movements = text.split("\n\n")
-        for y, line in enumerate(objects.splitlines()):
-            for x, object_type in enumerate(line):
-                warehouse.add_object(x, y, object_type)
+        items, movements = text.split("\n\n")
+        for y, line in enumerate(items.splitlines()):
+            for x, item_type in enumerate(line):
+                warehouse.add_item(x, y, item_type)
         for movement in movements:
             if movement.strip():
                 warehouse.add_robot_movement(movement)
         return warehouse
 
     def __init__(self):
+        self.items = {}
         self.robot = None
-        self.walls = set()
-        self.stones = {}
 
     def get(self, point):
-        if point in self.stones:
-            return self.stones[point]
-        elif point in self.walls:
-            return Obstacle()
-        else:
-            return Free()
+        return self.items.get(point, Free())
 
-    def add_object(self, x, y, object_type):
+    def add_item(self, x, y, item_type):
         point = Point(x, y)
-        if object_type == "@":
+        if item_type == "@":
             self.robot = Robot(point, self)
-        elif object_type == "#":
-            self.walls.add(point)
-        elif object_type == "O":
-            self.stones[point] = Stone(point, self)
+        elif item_type == "#":
+            self.items[point] = Wall()
+        elif item_type == "O":
+            self.items[point] = Stone(point, self)
         else:
-            assert object_type == "."
+            assert item_type == "."
 
     def add_robot_movement(self, movement):
         self.robot.add_movement(movement)
@@ -58,11 +52,11 @@ class Warehouse:
         return self
 
     def gps(self):
-        return sum(stone.gps() for stone in self.stones.values())
+        return sum(item.gps() for item in self.items.values())
 
-    def move_stone(self, stone, old_point, new_point):
-        del self.stones[old_point]
-        self.stones[new_point] = stone
+    def move_item(self, item, old_point, new_point):
+        del self.items[old_point]
+        self.items[new_point] = item
 
 class Robot:
 
@@ -95,13 +89,16 @@ class Stone:
     def push(self, movement):
         next_point = self.point.move(movement)
         if self.warehouse.get(next_point).push(movement):
-            self.warehouse.move_stone(self, self.point, next_point)
+            self.warehouse.move_item(self, self.point, next_point)
             self.point = next_point
             return True
         else:
             return False
 
-class Obstacle:
+class Wall:
+
+    def gps(self):
+        return 0
 
     def push(self, movement):
         return False
