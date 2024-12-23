@@ -3,6 +3,10 @@ Part 1:
 
 >>> Warehouse.load().move_robot().gps()
 1463512
+
+Part 2:
+
+>>> Warehouse.load(double=True).print()
 """
 
 import collections
@@ -10,17 +14,20 @@ import collections
 class Warehouse:
 
     @classmethod
-    def load(cls):
+    def load(cls, double=False):
         with open("15.txt") as f:
-            return cls.load_text(f.read())
+            return cls.load_text(f.read(), double)
 
     @classmethod
-    def load_text(cls, text):
+    def load_text(cls, text, double=False):
         warehouse = cls()
         items, movements = text.split("\n\n")
         for y, line in enumerate(items.splitlines()):
             for x, item_type in enumerate(line):
-                warehouse.add_item(x, y, item_type)
+                if double:
+                    warehouse.add_double_item(x, y, item_type)
+                else:
+                    warehouse.add_item(x, y, item_type)
         for movement in movements:
             if movement.strip():
                 warehouse.add_robot_movement(movement)
@@ -29,6 +36,13 @@ class Warehouse:
     def __init__(self):
         self.items = {}
         self.robot = None
+
+    def print(self):
+        for y in range(max(point.y for point in self.items)+1):
+            line = []
+            for x in range(max(point.x for point in self.items)+1):
+                line.append(self.get(Point(x, y)).grid_representation())
+            print("".join(line))
 
     def get(self, point):
         return self.items.get(point, Free())
@@ -41,6 +55,20 @@ class Warehouse:
             self.items[point] = Wall()
         elif item_type == "O":
             self.items[point] = Stone(point, self)
+        else:
+            assert item_type == "."
+
+    def add_double_item(self, x, y, item_type):
+        point = Point(x*2, y)
+        point_right = point.move(">")
+        if item_type == "@":
+            self.robot = Robot(point, self)
+        elif item_type == "#":
+            self.items[point] = Wall()
+            self.items[point_right] = Wall()
+        elif item_type == "O":
+            self.items[point] = LeftStone(point, self)
+            self.items[point_right] = RightStone(point_right, self)
         else:
             assert item_type == "."
 
@@ -94,17 +122,29 @@ class Stone:
         return True
 
     def push(self, movement):
-        if self.can_push(movement):
-            for point in self.get_push_points(movement):
-                self.warehouse.get(point).push(movement)
-            next_point = self.point.move(movement)
-            self.warehouse.move_item(self, self.point, next_point)
-            self.point = next_point
+        for point in self.get_push_points(movement):
+            self.warehouse.get(point).push(movement)
+        next_point = self.point.move(movement)
+        self.warehouse.move_item(self, self.point, next_point)
+        self.point = next_point
 
     def get_push_points(self, movement):
         return [self.point.move(movement)]
 
+class LeftStone(Stone):
+
+    def grid_representation(self):
+        return "["
+
+class RightStone(Stone):
+
+    def grid_representation(self):
+        return "]"
+
 class Wall:
+
+    def grid_representation(self):
+        return "#"
 
     def gps(self):
         return 0
@@ -113,6 +153,9 @@ class Wall:
         return False
 
 class Free:
+
+    def grid_representation(self):
+        return "."
 
     def can_push(self, movement):
         return True
