@@ -120,13 +120,13 @@ class Warehouse:
 
 class Robot:
 
-    def grid_representation(self):
-        return "@"
-
     def __init__(self, point, warehouse):
         self.point = point
         self.warehouse = warehouse
         self.movements = []
+
+    def grid_representation(self):
+        return "@"
 
     def add_movement(self, movement):
         self.movements.append(movement)
