@@ -114,8 +114,11 @@ class Warehouse:
     def gps(self):
         return sum(item.gps() for item in self.items.values())
 
-    def move_item(self, item, old_point, new_point):
-        del self.items[old_point]
+    def move_item(self, point, movement):
+        item = self.items[point]
+        del self.items[point]
+        new_point = point.move(movement)
+        item.warehouse_point_changed(new_point)
         self.items[new_point] = item
 
 class Robot:
@@ -142,7 +145,7 @@ class Robot:
             for item_point in self.warehouse.get(next_point).push(movement):
                 if item_point not in pushed:
                     pushed.add(item_point)
-                    self.warehouse.get(item_point).move(movement)
+                    self.warehouse.move_item(item_point, movement)
             self.point = next_point
         except InvalidPush:
             pass
@@ -153,22 +156,23 @@ class Stone:
         self.point = point
         self.warehouse = warehouse
 
+    def warehouse_point_changed(self, point):
+        self.point = point
+
     def gps(self):
         return self.point.gps()
 
     def push(self, movement):
         return self.warehouse.get(self.point.move(movement)).push(movement)+[self.point]
 
-    def move(self, movement):
-        next_point = self.point.move(movement)
-        self.warehouse.move_item(self, self.point, next_point)
-        self.point = next_point
-
 class LeftStone:
 
     def __init__(self, point, warehouse):
         self.point = point
         self.warehouse = warehouse
+
+    def warehouse_point_changed(self, point):
+        self.point = point
 
     def grid_representation(self):
         return "["
@@ -185,16 +189,14 @@ class LeftStone:
         stone_points.extend([self.point, self.point.move(">")])
         return stone_points
 
-    def move(self, movement):
-        next_point = self.point.move(movement)
-        self.warehouse.move_item(self, self.point, next_point)
-        self.point = next_point
-
 class RightStone:
 
     def __init__(self, point, warehouse):
         self.point = point
         self.warehouse = warehouse
+
+    def warehouse_point_changed(self, point):
+        self.point = point
 
     def grid_representation(self):
         return "]"
@@ -210,11 +212,6 @@ class RightStone:
             stone_points.extend(self.warehouse.get(push_point.move("<")).push(movement))
         stone_points.extend([self.point, self.point.move("<")])
         return stone_points
-
-    def move(self, movement):
-        next_point = self.point.move(movement)
-        self.warehouse.move_item(self, self.point, next_point)
-        self.point = next_point
 
 class Wall:
 
@@ -238,12 +235,8 @@ class Free:
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
     def move(self, movement):
-        dx, dy = {
-            "<": (-1, 0),
-            ">": (1, 0),
-            "^": (0, -1),
-            "v": (0, 1),
-        }[movement]
+        dx = {"<": -1, ">": 1}.get(movement, 0)
+        dy = {"^": -1, "v": 1}.get(movement, 0)
         return Point(x=self.x+dx, y=self.y+dy)
 
     def gps(self):
