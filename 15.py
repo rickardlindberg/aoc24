@@ -74,7 +74,8 @@ class Robot:
 
     def eval_movement(self, movement):
         next_point = self.point.move(movement)
-        if self.warehouse.get(next_point).push(movement):
+        if self.warehouse.get(next_point).can_push(movement):
+            self.warehouse.get(next_point).push(movement)
             self.point = next_point
 
 class Stone:
@@ -86,27 +87,38 @@ class Stone:
     def gps(self):
         return self.point.gps()
 
+    def can_push(self, movement):
+        for point in self.get_push_points(movement):
+            if not self.warehouse.get(point).can_push(movement):
+                return False
+        return True
+
     def push(self, movement):
-        next_point = self.point.move(movement)
-        if self.warehouse.get(next_point).push(movement):
+        if self.can_push(movement):
+            for point in self.get_push_points(movement):
+                self.warehouse.get(point).push(movement)
+            next_point = self.point.move(movement)
             self.warehouse.move_item(self, self.point, next_point)
             self.point = next_point
-            return True
-        else:
-            return False
+
+    def get_push_points(self, movement):
+        return [self.point.move(movement)]
 
 class Wall:
 
     def gps(self):
         return 0
 
-    def push(self, movement):
+    def can_push(self, movement):
         return False
 
 class Free:
 
-    def push(self, movement):
+    def can_push(self, movement):
         return True
+
+    def push(self, movement):
+        pass
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
