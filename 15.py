@@ -1,4 +1,32 @@
 """
+Examples:
+
+>>> lines = [
+...     "#####",
+...     "#...#",
+...     "#.O.#",
+...     "#.O.#",
+...     "#.@.#",
+...     "#####",
+...     "",
+...     "^",
+... ]
+>>> warehouse = Warehouse.load_text("\\n".join(lines), double=True)
+>>> warehouse.print()
+##########
+##......##
+##..[]..##
+##..[]..##
+##..@...##
+##########
+>>> warehouse.move_robot().print()
+##########
+##..[]..##
+##..[]..##
+##..@...##
+##......##
+##########
+
 Part 1:
 
 >>> Warehouse.load().move_robot().gps()
@@ -6,7 +34,8 @@ Part 1:
 
 Part 2:
 
->>> Warehouse.load(double=True).print()
+>>> Warehouse.load(double=True).move_robot().gps()
+1486520
 """
 
 import collections
@@ -45,7 +74,10 @@ class Warehouse:
             print("".join(line))
 
     def get(self, point):
-        return self.items.get(point, Free())
+        if point == self.robot.point:
+            return self.robot
+        else:
+            return self.items.get(point, Free())
 
     def add_item(self, x, y, item_type):
         point = Point(x, y)
@@ -88,6 +120,9 @@ class Warehouse:
 
 class Robot:
 
+    def grid_representation(self):
+        return "@"
+
     def __init__(self, point, warehouse):
         self.point = point
         self.warehouse = warehouse
@@ -102,8 +137,13 @@ class Robot:
 
     def eval_movement(self, movement):
         next_point = self.point.move(movement)
-        if self.warehouse.get(next_point).can_push(movement):
-            self.warehouse.get(next_point).push(movement)
+        stones = self.warehouse.get(next_point).stones_to_push(movement)
+        if stones is not None:
+            pushed = set()
+            for stone_point in stones:
+                if stone_point not in pushed:
+                    pushed.add(stone_point)
+                    self.warehouse.get(stone_point).move(movement)
             self.point = next_point
 
 class Stone:
@@ -115,15 +155,22 @@ class Stone:
     def gps(self):
         return self.point.gps()
 
-    def can_push(self, movement):
+    def stones_to_push(self, movement):
+        stone_points = []
         for point in self.get_push_points(movement):
-            if not self.warehouse.get(point).can_push(movement):
-                return False
-        return True
+            sub = self.warehouse.get(point).stones_to_push(movement)
+            if sub is None:
+                return None
+            else:
+                stone_points.extend(sub)
+        for point in self.get_my_points():
+            stone_points.append(point)
+        return stone_points
 
-    def push(self, movement):
-        for point in self.get_push_points(movement):
-            self.warehouse.get(point).push(movement)
+    def get_my_points(self):
+        return [self.point]
+
+    def move(self, movement):
         next_point = self.point.move(movement)
         self.warehouse.move_item(self, self.point, next_point)
         self.point = next_point
@@ -136,32 +183,50 @@ class LeftStone(Stone):
     def grid_representation(self):
         return "["
 
+    def get_my_points(self):
+        return [self.point, self.point.move(">")]
+
+    def get_push_points(self, movement):
+        points = [self.point.move(movement)]
+        if movement in "^v":
+            points.append(points[0].move(">"))
+        return points
+
 class RightStone(Stone):
 
     def grid_representation(self):
         return "]"
+
+    def get_my_points(self):
+        return [self.point, self.point.move("<")]
+
+    def get_push_points(self, movement):
+        points = [self.point.move(movement)]
+        if movement in "^v":
+            points.append(points[0].move("<"))
+        return points
+
+    def gps(self):
+        return 0
 
 class Wall:
 
     def grid_representation(self):
         return "#"
 
+    def stones_to_push(self, movement):
+        return None
+
     def gps(self):
         return 0
-
-    def can_push(self, movement):
-        return False
 
 class Free:
 
     def grid_representation(self):
         return "."
 
-    def can_push(self, movement):
-        return True
-
-    def push(self, movement):
-        pass
+    def stones_to_push(self, movement):
+        return []
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
