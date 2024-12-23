@@ -1,4 +1,14 @@
 """
+Part 1:
+
+>>> Warehouse.load().move_robot().gps()
+1463512
+
+Part 2:
+
+>>> Warehouse.load(double=True).move_robot().gps()
+1486520
+
 Examples:
 
 >>> lines = [
@@ -26,16 +36,6 @@ Examples:
 ##..@...##
 ##......##
 ##########
-
-Part 1:
-
->>> Warehouse.load().move_robot().gps()
-1463512
-
-Part 2:
-
->>> Warehouse.load(double=True).move_robot().gps()
-1486520
 """
 
 import collections
@@ -137,13 +137,16 @@ class Robot:
 
     def eval_movement(self, movement):
         next_point = self.point.move(movement)
-        stones = self.warehouse.get(next_point).stones_to_push(movement)
-        if stones is not None:
+        try:
+            items = self.warehouse.get(next_point).push(movement)
+        except InvalidPush:
+            pass
+        else:
             pushed = set()
-            for stone_point in stones:
-                if stone_point not in pushed:
-                    pushed.add(stone_point)
-                    self.warehouse.get(stone_point).move(movement)
+            for item_point in items:
+                if item_point not in pushed:
+                    pushed.add(item_point)
+                    self.warehouse.get(item_point).move(movement)
             self.point = next_point
 
 class Stone:
@@ -155,19 +158,15 @@ class Stone:
     def gps(self):
         return self.point.gps()
 
-    def stones_to_push(self, movement):
+    def push(self, movement):
         stone_points = []
         for point in self.get_push_points(movement):
-            sub = self.warehouse.get(point).stones_to_push(movement)
-            if sub is None:
-                return None
-            else:
-                stone_points.extend(sub)
-        for point in self.get_my_points():
+            stone_points.extend(self.warehouse.get(point).push(movement))
+        for point in self.my_points():
             stone_points.append(point)
         return stone_points
 
-    def get_my_points(self):
+    def my_points(self):
         return [self.point]
 
     def move(self, movement):
@@ -183,7 +182,7 @@ class LeftStone(Stone):
     def grid_representation(self):
         return "["
 
-    def get_my_points(self):
+    def my_points(self):
         return [self.point, self.point.move(">")]
 
     def get_push_points(self, movement):
@@ -197,7 +196,7 @@ class RightStone(Stone):
     def grid_representation(self):
         return "]"
 
-    def get_my_points(self):
+    def my_points(self):
         return [self.point, self.point.move("<")]
 
     def get_push_points(self, movement):
@@ -214,8 +213,8 @@ class Wall:
     def grid_representation(self):
         return "#"
 
-    def stones_to_push(self, movement):
-        return None
+    def push(self, movement):
+        raise InvalidPush()
 
     def gps(self):
         return 0
@@ -225,7 +224,7 @@ class Free:
     def grid_representation(self):
         return "."
 
-    def stones_to_push(self, movement):
+    def push(self, movement):
         return []
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
@@ -241,6 +240,9 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
 
     def gps(self):
         return 100*self.y + self.x
+
+class InvalidPush(Exception):
+    pass
 
 if __name__ == "__main__":
     import doctest
