@@ -136,18 +136,16 @@ class Robot:
             self.eval_movement(self.movements.pop(0))
 
     def eval_movement(self, movement):
-        next_point = self.point.move(movement)
         try:
-            items = self.warehouse.get(next_point).push(movement)
-        except InvalidPush:
-            pass
-        else:
             pushed = set()
-            for item_point in items:
+            next_point = self.point.move(movement)
+            for item_point in self.warehouse.get(next_point).push(movement):
                 if item_point not in pushed:
                     pushed.add(item_point)
                     self.warehouse.get(item_point).move(movement)
             self.point = next_point
+        except InvalidPush:
+            pass
 
 class Stone:
 
@@ -159,65 +157,75 @@ class Stone:
         return self.point.gps()
 
     def push(self, movement):
-        stone_points = []
-        for point in self.get_push_points(movement):
-            stone_points.extend(self.warehouse.get(point).push(movement))
-        for point in self.my_points():
-            stone_points.append(point)
-        return stone_points
-
-    def my_points(self):
-        return [self.point]
+        return self.warehouse.get(self.point.move(movement)).push(movement)+[self.point]
 
     def move(self, movement):
         next_point = self.point.move(movement)
         self.warehouse.move_item(self, self.point, next_point)
         self.point = next_point
 
-    def get_push_points(self, movement):
-        return [self.point.move(movement)]
+class LeftStone:
 
-class LeftStone(Stone):
+    def __init__(self, point, warehouse):
+        self.point = point
+        self.warehouse = warehouse
 
     def grid_representation(self):
         return "["
 
-    def my_points(self):
-        return [self.point, self.point.move(">")]
+    def gps(self):
+        return self.point.gps()
 
-    def get_push_points(self, movement):
-        points = [self.point.move(movement)]
+    def push(self, movement):
+        push_point = self.point.move(movement)
+        stone_points = []
+        stone_points.extend(self.warehouse.get(push_point).push(movement))
         if movement in "^v":
-            points.append(points[0].move(">"))
-        return points
+            stone_points.extend(self.warehouse.get(push_point.move(">")).push(movement))
+        stone_points.extend([self.point, self.point.move(">")])
+        return stone_points
 
-class RightStone(Stone):
+    def move(self, movement):
+        next_point = self.point.move(movement)
+        self.warehouse.move_item(self, self.point, next_point)
+        self.point = next_point
+
+class RightStone:
+
+    def __init__(self, point, warehouse):
+        self.point = point
+        self.warehouse = warehouse
 
     def grid_representation(self):
         return "]"
 
-    def my_points(self):
-        return [self.point, self.point.move("<")]
-
-    def get_push_points(self, movement):
-        points = [self.point.move(movement)]
-        if movement in "^v":
-            points.append(points[0].move("<"))
-        return points
-
     def gps(self):
         return 0
+
+    def push(self, movement):
+        push_point = self.point.move(movement)
+        stone_points = []
+        stone_points.extend(self.warehouse.get(push_point).push(movement))
+        if movement in "^v":
+            stone_points.extend(self.warehouse.get(push_point.move("<")).push(movement))
+        stone_points.extend([self.point, self.point.move("<")])
+        return stone_points
+
+    def move(self, movement):
+        next_point = self.point.move(movement)
+        self.warehouse.move_item(self, self.point, next_point)
+        self.point = next_point
 
 class Wall:
 
     def grid_representation(self):
         return "#"
 
-    def push(self, movement):
-        raise InvalidPush()
-
     def gps(self):
         return 0
+
+    def push(self, movement):
+        raise InvalidPush()
 
 class Free:
 
