@@ -31,7 +31,26 @@ small = "\n".join([
     "###############",
 ])
 
+empty = "\n".join([
+    "###############",
+    "#............E#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#S............#",
+    "###############",
+])
+
 import collections
+import time
 
 class MazeParser:
 
@@ -65,7 +84,7 @@ class Maze:
         self.walls[point] = True
 
     def mark_start(self, point, direction):
-        self.start = Reindeer(point=point, direction=direction, score=0)
+        self.start = Reindeer(point=point, direction=direction, score=0, trail=[])
 
     def mark_end(self, point):
         self.end = point
@@ -81,7 +100,7 @@ class Maze:
             line = []
             for point in row.columns():
                 if point in mark:
-                    line.append("*")
+                    line.append(".")
                 elif point in self.walls:
                     line.append("#")
                 elif point == self.end:
@@ -89,7 +108,7 @@ class Maze:
                 elif point == self.start.point:
                     line.append("S")
                 else:
-                    line.append(".")
+                    line.append(" ")
             print("".join(line))
 
     def max_point(self):
@@ -98,13 +117,16 @@ class Maze:
             max_point = max_point.max(point)
         return max_point
 
-    def solve(self):
+    def solve(self, interactive=False):
         assert self.start is not None
         assert self.end is not None
         search_space = ReindeerSearchSpace.from_start_end(self.start, self.end)
         while True:
             try:
                 reindeer = search_space.get_best()
+                if interactive:
+                    self.print(mark=reindeer.trail)
+                    time.sleep(0.2)
                 if reindeer.is_finished(self):
                     yield reindeer
                 else:
@@ -185,7 +207,7 @@ class Direction(collections.namedtuple("Direction", ["direction"])):
         dy = {self.SOUTH: 1, self.NORTH: -1}.get(self.direction, 0)
         return point.move(dx=dx, dy=dy)
 
-class Reindeer(collections.namedtuple("Reindeer", ["point", "direction", "score"])):
+class Reindeer(collections.namedtuple("Reindeer", ["point", "direction", "score", "trail"])):
 
     def optimal_score_to(self, end):
         return self.score + self.point.distance_to(end)
@@ -223,9 +245,11 @@ class Reindeer(collections.namedtuple("Reindeer", ["point", "direction", "score"
         return self._replace(
             point=self.direction.move(self.point),
             score=self.score+1,
+            trail=self.trail+[self.point]
         )
 
 if __name__ == "__main__":
+    next(MazeParser().parse_text(empty).solve(interactive=True))
     import doctest
     doctest.testmod()
     print("OK")
