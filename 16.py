@@ -180,6 +180,8 @@ class Move:
 
 class ReindeerSearch:
 
+    GOAL = None
+
     def __init__(self, maze, reindeer):
         self.maze = maze
         self.fringe = [reindeer]
@@ -192,40 +194,43 @@ class ReindeerSearch:
             if interactive:
                 self.maze.print(trail=self.trail(reindeer))
                 time.sleep(0.1)
-            if reindeer == "DONE":
-                pass
-            else:
-                if reindeer.is_end(self.maze):
-                    moves = [Move(cost=0, reindeer="DONE")]
-                else:
-                    moves = reindeer.moves(self.maze)
-                for move in moves:
-                    neighbour = move.reindeer
-                    move_cost = self.cost[reindeer] + move.cost
-                    if "DONE" in self.cost and move_cost > self.cost["DONE"]:
-                        pass
-                    elif neighbour not in self.cost:
-                        self.came_from[neighbour] = [reindeer]
-                        self.cost[neighbour] = move_cost
-                        self.fringe.append(neighbour)
-                        self.fringe.sort(key=lambda x: self.cost[x])
-                    elif move_cost < self.cost[neighbour]:
-                        self.came_from[neighbour].append(reindeer)
-                        self.cost[neighbour] = move_cost
-                        self.fringe.append(neighbour)
-                        self.fringe.sort(key=lambda x: self.cost[x])
-                    elif move_cost <= self.cost[neighbour]:
-                        self.came_from[neighbour].append(reindeer)
+            self.process(reindeer)
         if interactive:
-            self.maze.print(trail=self.trail("DONE"))
+            self.maze.print(trail=self.trail(self.GOAL))
         return Solution(
-            trail=self.trail("DONE"),
-            cost=self.cost["DONE"],
+            trail=self.trail(self.GOAL),
+            cost=self.cost[self.GOAL],
         )
+
+    def process(self, reindeer):
+        if reindeer == self.GOAL:
+            pass
+        else:
+            if reindeer.is_end(self.maze):
+                moves = [Move(cost=0, reindeer=self.GOAL)]
+            else:
+                moves = reindeer.moves(self.maze)
+            for move in moves:
+                neighbour = move.reindeer
+                move_cost = self.cost[reindeer] + move.cost
+                if self.GOAL in self.cost and move_cost > self.cost[self.GOAL]:
+                    pass
+                elif neighbour not in self.cost:
+                    self.came_from[neighbour] = [reindeer]
+                    self.cost[neighbour] = move_cost
+                    self.fringe.append(neighbour)
+                    self.fringe.sort(key=lambda x: self.cost[x])
+                elif move_cost < self.cost[neighbour]:
+                    self.came_from[neighbour].append(reindeer)
+                    self.cost[neighbour] = move_cost
+                    self.fringe.append(neighbour)
+                    self.fringe.sort(key=lambda x: self.cost[x])
+                elif move_cost <= self.cost[neighbour]:
+                    self.came_from[neighbour].append(reindeer)
 
     def trail(self, reindeer):
         trail = set()
-        if reindeer != "DONE":
+        if reindeer != self.GOAL:
             trail.add(reindeer.point)
         for previous in self.came_from.get(reindeer, []):
             trail |= self.trail(previous)
