@@ -11,6 +11,11 @@ Part 1:
 
 >>> next(MazeParser().parse().solve()).score
 65436
+
+Part 2:
+
+>>> [x.score for x in MazeParser().parse().solve()]
+[65436]
 """
 
 small = "\n".join([
@@ -171,6 +176,18 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
     def distance_to(self, other):
         return abs(self.x-other.x) + abs(self.y-other.y)
 
+    def directions_to(self, other):
+        directions = []
+        if other.x < self.x:
+            directions.append(Direction.west())
+        elif other.x > self.x:
+            directions.append(Direction.east())
+        if other.y < self.y:
+            directions.append(Direction.north())
+        elif other.y > self.y:
+            directions.append(Direction.south())
+        return directions
+
     def max(self, other):
         return Point(x=max(self.x, other.x), y=max(self.y, other.y))
 
@@ -196,6 +213,18 @@ class Direction(collections.namedtuple("Direction", ["direction"])):
     def east(cls):
         return cls(cls.EAST)
 
+    @classmethod
+    def west(cls):
+        return cls(cls.WEST)
+
+    @classmethod
+    def north(cls):
+        return cls(cls.NORTH)
+
+    @classmethod
+    def south(cls):
+        return cls(cls.SOUTH)
+
     def rotate_clockwise(self):
         return self._replace(direction=(self.direction+1)%4)
 
@@ -210,7 +239,14 @@ class Direction(collections.namedtuple("Direction", ["direction"])):
 class Reindeer(collections.namedtuple("Reindeer", ["point", "direction", "score", "trail"])):
 
     def optimal_score_to(self, end):
-        return self.score + self.point.distance_to(end)
+        return self.score + self.point.distance_to(end) + 1000*self.turns_to(end)
+
+    def turns_to(self, end):
+        directions = self.point.directions_to(end)
+        if self.direction in directions:
+            return len(directions)-1
+        else:
+            return len(directions)
 
     def moves(self, maze):
         return [
@@ -249,7 +285,7 @@ class Reindeer(collections.namedtuple("Reindeer", ["point", "direction", "score"
         )
 
 if __name__ == "__main__":
-    next(MazeParser().parse_text(empty).solve(interactive=True))
+    #next(MazeParser().parse_text(empty).solve(interactive=True))
     import doctest
     doctest.testmod()
     print("OK")
