@@ -1,12 +1,15 @@
 """
 Examples:
 
->>> MazeParser().parse_text(small).solve().score
+>>> next(MazeParser().parse_text(small).solve()).score
 7036
+
+>>> [x.score for x in MazeParser().parse_text(small).solve()]
+[7036, 10028]
 
 Part 1:
 
->>> MazeParser().parse().solve().score
+>>> next(MazeParser().parse().solve()).score
 65436
 """
 
@@ -100,11 +103,14 @@ class Maze:
         assert self.end is not None
         search_space = ReindeerSearchSpace.from_start_end(self.start, self.end)
         while True:
-            reindeer = search_space.get_best()
-            if reindeer.is_finished(self):
-                return reindeer
-            else:
-                search_space.extend(reindeer.moves(self))
+            try:
+                reindeer = search_space.get_best()
+                if reindeer.is_finished(self):
+                    yield reindeer
+                else:
+                    search_space.extend(reindeer.moves(self))
+            except SearchSpaceEmtpy:
+                break
 
 class ReindeerSearchSpace:
 
@@ -119,10 +125,13 @@ class ReindeerSearchSpace:
         self.extend(reindeers)
 
     def get_best(self):
-        self.reindeers.sort(
-            key=lambda reindeer: reindeer.optimal_score_to(self.end)
-        )
-        return self.reindeers.pop(0)
+        if self.reindeers:
+            self.reindeers.sort(
+                key=lambda reindeer: reindeer.optimal_score_to(self.end)
+            )
+            return self.reindeers.pop(0)
+        else:
+            raise SearchSpaceEmtpy()
 
     def extend(self, reindeers):
         for reindeer in reindeers:
@@ -131,6 +140,9 @@ class ReindeerSearchSpace:
             if state not in self.states or score < self.states[state]:
                 self.states[state] = score
                 self.reindeers.append(reindeer)
+
+class SearchSpaceEmtpy(Exception):
+    pass
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
