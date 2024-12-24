@@ -98,15 +98,15 @@ class Maze:
     def solve(self):
         assert self.start is not None
         assert self.end is not None
-        reindeers = Reindeers.from_start_end(self.start, self.end)
+        search_space = ReindeerSearchSpace.from_start_end(self.start, self.end)
         while True:
-            reindeer = reindeers.get_best()
+            reindeer = search_space.get_best()
             if reindeer.is_finished(self):
                 return reindeer
             else:
-                reindeers.extend(reindeer.moves(self))
+                search_space.extend(reindeer.moves(self))
 
-class Reindeers:
+class ReindeerSearchSpace:
 
     @classmethod
     def from_start_end(cls, reindeer, end):
@@ -119,7 +119,9 @@ class Reindeers:
         self.extend(reindeers)
 
     def get_best(self):
-        self.reindeers.sort(key=lambda reindeer: reindeer.optimal_score_to(self.end))
+        self.reindeers.sort(
+            key=lambda reindeer: reindeer.optimal_score_to(self.end)
+        )
         return self.reindeers.pop(0)
 
     def extend(self, reindeers):
