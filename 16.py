@@ -59,6 +59,7 @@ empty = "\n".join([
 ])
 
 import collections
+import sys
 import time
 
 class MazeParser:
@@ -87,10 +88,10 @@ class Maze:
     def __init__(self):
         self.start = None
         self.end = None
-        self.walls = {}
+        self.walls = set()
 
     def add_wall(self, point):
-        self.walls[point] = True
+        self.walls.add(point)
 
     def mark_start(self, point, direction):
         self.start = Reindeer(point=point, direction=direction)
@@ -122,7 +123,7 @@ class Maze:
 
     def max_point(self):
         max_point = Point(x=0, y=0)
-        for point in list(self.walls.keys()) + [self.start.point, self.end]:
+        for point in list(self.walls) + [self.start.point, self.end]:
             max_point = max_point.max(point)
         return max_point
 
@@ -134,11 +135,48 @@ class Maze:
             start=self.start,
         ).solve(interactive)
 
-class Solution:
+class Reindeer(collections.namedtuple("Reindeer", ["point", "direction"])):
 
-    def __init__(self, trail, cost):
-        self.trail = trail
+    def moves(self, maze):
+        return [
+            move
+            for move in [
+                Move(cost=1000, reindeer=self.rotate_clockwise()),
+                Move(cost=1000, reindeer=self.rotate_counterclockwise()),
+                Move(cost=1, reindeer=self.walk()),
+            ]
+            if move.is_possible(maze)
+        ]
+
+    def is_end(self, maze):
+        return maze.is_end(self.point)
+
+    def is_valid(self, maze):
+        return maze.is_free(self.point)
+
+    def rotate_clockwise(self):
+        return self._replace(
+            direction=self.direction.rotate_clockwise(),
+        )
+
+    def rotate_counterclockwise(self):
+        return self._replace(
+            direction=self.direction.rotate_counterclockwise(),
+        )
+
+    def walk(self):
+        return self._replace(
+            point=self.direction.move(self.point),
+        )
+
+class Move:
+
+    def __init__(self, cost, reindeer):
         self.cost = cost
+        self.reindeer = reindeer
+
+    def is_possible(self, maze):
+        return self.reindeer.is_valid(maze)
 
 class ReindeerSearchSpace:
 
@@ -161,13 +199,20 @@ class ReindeerSearchSpace:
             reindeer = self.fringe.pop(0)
             if interactive:
                 self.maze.print(mark=self.trail(reindeer))
-                time.sleep(0.01)
+                time.sleep(0.1)
             if reindeer == "DONE":
                 pass
             else:
-                for (score, neighbour) in reindeer.moves(self.maze):
-                    move_cost = self.cost[reindeer] + score
-                    if neighbour not in self.cost:
+                if reindeer.is_end(self.maze):
+                    moves = [Move(cost=0, reindeer="DONE")]
+                else:
+                    moves = reindeer.moves(self.maze)
+                for move in moves:
+                    neighbour = move.reindeer
+                    move_cost = self.cost[reindeer] + move.cost
+                    if "DONE" in self.cost and move_cost > self.cost["DONE"]:
+                        pass
+                    elif neighbour not in self.cost:
                         self.came_from[neighbour] = [reindeer]
                         self.cost[neighbour] = move_cost
                         self.fringe.append(neighbour)
@@ -185,6 +230,12 @@ class ReindeerSearchSpace:
             trail=self.trail("DONE"),
             cost=self.cost["DONE"],
         )
+
+class Solution:
+
+    def __init__(self, trail, cost):
+        self.trail = trail
+        self.cost = cost
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
@@ -224,42 +275,9 @@ class Direction(collections.namedtuple("Direction", ["direction"])):
         dy = {self.SOUTH: 1, self.NORTH: -1}.get(self.direction, 0)
         return point.move(dx=dx, dy=dy)
 
-class Reindeer(collections.namedtuple("Reindeer", ["point", "direction"])):
-
-    def moves(self, maze):
-        if maze.is_end(self.point):
-            return [(0, "DONE")]
-        else:
-            return [
-                reindeer
-                for reindeer in [
-                    (1000, self.rotate_clockwise()),
-                    (1000, self.rotate_counterclockwise()),
-                    (1, self.walk()),
-                ]
-                if reindeer[1].is_valid(maze)
-            ]
-
-    def is_valid(self, maze):
-        return maze.is_free(self.point)
-
-    def rotate_clockwise(self):
-        return self._replace(
-            direction=self.direction.rotate_clockwise(),
-        )
-
-    def rotate_counterclockwise(self):
-        return self._replace(
-            direction=self.direction.rotate_counterclockwise(),
-        )
-
-    def walk(self):
-        return self._replace(
-            point=self.direction.move(self.point),
-        )
-
 if __name__ == "__main__":
-    MazeParser().parse_text(small).solve(interactive=True)
+    if "interactive" in sys.argv[1:]:
+        MazeParser().parse_text(small).solve(interactive=True)
     import doctest
     doctest.testmod()
     print("OK")
