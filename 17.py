@@ -37,7 +37,6 @@ Register C: 0
 
 >>> manually_decompiled()
 '6,2,7,2,3,1,6,0,5'
-
 """
 
 def manually_decompiled():
