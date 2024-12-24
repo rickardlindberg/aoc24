@@ -1,7 +1,7 @@
 """
 Examples:
 
->>> solution = MazeParser().parse_text(small).solve()
+>>> solution = MazeParser().parse_lines(small).solve()
 >>> len(solution.trail)
 45
 >>> solution.cost
@@ -22,7 +22,7 @@ Part 2:
 489
 """
 
-small = "\n".join([
+small = [
     "###############",
     "#.......#....E#",
     "#.#.###.#.###.#",
@@ -38,9 +38,9 @@ small = "\n".join([
     "#.###.#.#.#.#.#",
     "#S..#.....#...#",
     "###############",
-])
+]
 
-empty = "\n".join([
+empty = [
     "###############",
     "#............E#",
     "#.............#",
@@ -56,7 +56,7 @@ empty = "\n".join([
     "#.............#",
     "#S............#",
     "###############",
-])
+]
 
 import collections
 import sys
@@ -66,11 +66,11 @@ class MazeParser:
 
     def parse(self):
         with open("16.txt") as f:
-            return self.parse_text(f.read())
+            return self.parse_lines(f.read().splitlines())
 
-    def parse_text(self, text):
+    def parse_lines(self, lines):
         maze = Maze()
-        for y, row in enumerate(text.splitlines()):
+        for y, row in enumerate(lines):
             for x, tile in enumerate(row):
                 point = Point(x=x, y=y)
                 if tile == "#":
@@ -105,11 +105,11 @@ class Maze:
     def is_end(self, point):
         return point == self.end
 
-    def print(self, mark=[]):
+    def print(self, trail=[]):
         for row in self.max_point().rows():
             line = []
             for point in row.columns():
-                if point in mark:
+                if point in trail:
                     line.append(".")
                 elif point in self.walls:
                     line.append("#")
@@ -130,10 +130,10 @@ class Maze:
     def solve(self, interactive=False):
         assert self.start is not None
         assert self.end is not None
-        return ReindeerSearchSpace(
+        return ReindeerSearch(
             maze=self,
-            start=self.start,
-        ).solve(interactive)
+            reindeer=self.start,
+        ).find_all(interactive)
 
 class Reindeer(collections.namedtuple("Reindeer", ["point", "direction"])):
 
@@ -151,7 +151,7 @@ class Reindeer(collections.namedtuple("Reindeer", ["point", "direction"])):
     def is_end(self, maze):
         return maze.is_end(self.point)
 
-    def is_valid(self, maze):
+    def on_free_spot(self, maze):
         return maze.is_free(self.point)
 
     def rotate_clockwise(self):
@@ -176,29 +176,21 @@ class Move:
         self.reindeer = reindeer
 
     def is_possible(self, maze):
-        return self.reindeer.is_valid(maze)
+        return self.reindeer.on_free_spot(maze)
 
-class ReindeerSearchSpace:
+class ReindeerSearch:
 
-    def __init__(self, maze, start):
+    def __init__(self, maze, reindeer):
         self.maze = maze
-        self.fringe = [start]
-        self.cost = {start: 0}
-        self.came_from = {start: []}
+        self.fringe = [reindeer]
+        self.cost = {reindeer: 0}
+        self.came_from = {reindeer: []}
 
-    def trail(self, reindeer):
-        trail = set()
-        if reindeer != "DONE":
-            trail.add(reindeer.point)
-        for previous in self.came_from.get(reindeer, []):
-            trail |= self.trail(previous)
-        return trail
-
-    def solve(self, interactive):
+    def find_all(self, interactive):
         while self.fringe:
             reindeer = self.fringe.pop(0)
             if interactive:
-                self.maze.print(mark=self.trail(reindeer))
+                self.maze.print(trail=self.trail(reindeer))
                 time.sleep(0.1)
             if reindeer == "DONE":
                 pass
@@ -225,11 +217,19 @@ class ReindeerSearchSpace:
                     elif move_cost <= self.cost[neighbour]:
                         self.came_from[neighbour].append(reindeer)
         if interactive:
-            self.maze.print(mark=self.trail("DONE"))
+            self.maze.print(trail=self.trail("DONE"))
         return Solution(
             trail=self.trail("DONE"),
             cost=self.cost["DONE"],
         )
+
+    def trail(self, reindeer):
+        trail = set()
+        if reindeer != "DONE":
+            trail.add(reindeer.point)
+        for previous in self.came_from.get(reindeer, []):
+            trail |= self.trail(previous)
+        return trail
 
 class Solution:
 
@@ -277,7 +277,7 @@ class Direction(collections.namedtuple("Direction", ["direction"])):
 
 if __name__ == "__main__":
     if "interactive" in sys.argv[1:]:
-        MazeParser().parse_text(small).solve(interactive=True)
+        MazeParser().parse_lines(small).solve(interactive=True)
     import doctest
     doctest.testmod()
     print("OK")
