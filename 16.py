@@ -5,7 +5,7 @@ Examples:
 7036
 
 >>> list(MazeParser().parse_text(small).solve())
-[7036, 10028]
+[7036]
 
 Part 1:
 
@@ -146,7 +146,7 @@ class ReindeerSearchSpace:
             if interactive:
                 self.maze.print(mark=self.trail(reindeer))
                 time.sleep(0.1)
-            if reindeer.is_finished(self.maze):
+            if reindeer == "DONE":
                 yield self.cost[reindeer]
             else:
                 for (score, neighbour) in reindeer.moves(self.maze):
@@ -198,15 +198,18 @@ class Direction(collections.namedtuple("Direction", ["direction"])):
 class Reindeer(collections.namedtuple("Reindeer", ["point", "direction"])):
 
     def moves(self, maze):
-        return [
-            reindeer
-            for reindeer in [
-                (1000, self.rotate_clockwise()),
-                (1000, self.rotate_counterclockwise()),
-                (1, self.walk()),
+        if self.is_finished(maze):
+            return [(0, "DONE")]
+        else:
+            return [
+                reindeer
+                for reindeer in [
+                    (1000, self.rotate_clockwise()),
+                    (1000, self.rotate_counterclockwise()),
+                    (1, self.walk()),
+                ]
+                if reindeer[1].is_valid(maze)
             ]
-            if reindeer[1].is_valid(maze)
-        ]
 
     def is_valid(self, maze):
         return maze.is_free(self.point)
