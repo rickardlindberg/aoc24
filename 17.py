@@ -10,31 +10,50 @@ Examples:
 ... ]).run()
 '4,6,3,5,6,3,5,2,1,0'
 
-Par 1:
+Part 1:
 
 >>> ComputerParser().parse().print()
 Register A: 47006051
 Register B: 0
 Register C: 0
-> bst:      B = operand % 8
-  A
-  bxl:      B = B xor operand
-  3
-  cdv:      C = A // 2**operand
-  B
-  bxl:      B = B xor operand
-  B
-  adv:      A = A // 2**operand
-  3
-  bxc:      B = B xor C
-  3
-  out:      output(operand % 8)
-  B
-  jnz:      if A != 0 then IP = operand
-  0
+> bst: B = combo % 8
+       literal=4 | combo=A
+  bxl: B = B xor literal
+       literal=3 | combo=3
+  cdv: C = A // 2**combo
+       literal=5 | combo=B
+  bxl: B = B xor literal
+       literal=5 | combo=B
+  adv: A = A // 2**combo
+       literal=3 | combo=3
+  bxc: B = B xor C
+       literal=3 | combo=3
+  out: output(combo % 8)
+       literal=5 | combo=B
+  jnz: if A != 0 then IP = literal
+       literal=0 | combo=0
 >>> ComputerParser().parse().run()
 '6,2,7,2,3,1,6,0,5'
+
+>>> manually_decompiled()
+'6,2,7,2,3,1,6,0,5'
+
 """
+
+def manually_decompiled():
+    A = 47006051
+    B = 0
+    C = 0
+    output = []
+    while A != 0:
+        B = A % 8
+        B = operator.xor(B, 3)
+        C = A // 2**B
+        B = operator.xor(B, 5)
+        A = A // 2**3
+        B = operator.xor(B, C)
+        output.append(B % 8)
+    return ",".join(str(x) for x in output)
 
 import operator
 
@@ -134,7 +153,7 @@ class Adv:
         )
 
     def __repr__(self):
-        return "adv:      A = A // 2**operand"
+        return "adv: A = A // 2**combo"
 
 class Bxl:
 
@@ -145,7 +164,7 @@ class Bxl:
         )
 
     def __repr__(self):
-        return "bxl:      B = B xor operand"
+        return "bxl: B = B xor literal"
 
 class Bst:
 
@@ -156,7 +175,7 @@ class Bst:
         )
 
     def __repr__(self):
-        return "bst:      B = operand % 8"
+        return "bst: B = combo % 8"
 
 class Jnz:
 
@@ -165,7 +184,7 @@ class Jnz:
             computer.set_instruction_pointer(operand.eval_literal(computer))
 
     def __repr__(self):
-        return "jnz:      if A != 0 then IP = operand"
+        return "jnz: if A != 0 then IP = literal"
 
 class Bxc:
 
@@ -176,7 +195,7 @@ class Bxc:
         )
 
     def __repr__(self):
-        return "bxc:      B = B xor C"
+        return "bxc: B = B xor C"
 
 class Out:
 
@@ -184,12 +203,15 @@ class Out:
         computer.add_out(operand.eval_combo(computer) % 8)
 
     def __repr__(self):
-        return "out:      output(operand % 8)"
+        return "out: output(combo % 8)"
 
 class Bdv:
 
+    def eval(self, computer, operand):
+        raise NotImplementedError("bdv never used")
+
     def __repr__(self):
-        return "bdv:      B = A // 2**operand"
+        return "bdv: B = A // 2**combo"
 
 class Cdv:
 
@@ -200,7 +222,7 @@ class Cdv:
         )
 
     def __repr__(self):
-        return "cdv:      C = A // 2**operand"
+        return "cdv: C = A // 2**combo"
 
 class Operand:
 
@@ -229,7 +251,7 @@ class Operand:
             raise ValueError("invalid operand")
 
     def __repr__(self):
-        return str(self.compile_combo())
+        return f"     literal={self.number} | combo={self.compile_combo()}"
 
 class Literal:
 
