@@ -1,7 +1,7 @@
 """
 Examples:
 
->>> MazeParser().parse_text("\\n".join(small)).solve().score
+>>> MazeParser().parse_text(small).solve().score
 7036
 
 Part 1:
@@ -10,7 +10,7 @@ Part 1:
 65436
 """
 
-small = [
+small = "\n".join([
     "###############",
     "#.......#....E#",
     "#.#.###.#.###.#",
@@ -26,7 +26,7 @@ small = [
     "#.###.#.#.#.#.#",
     "#S..#.....#...#",
     "###############",
-]
+])
 
 import collections
 
@@ -214,7 +214,6 @@ class Reindeer(collections.namedtuple("Reindeer", ["point", "direction", "score"
         )
 
 if __name__ == "__main__":
-    MazeParser().parse_text("\n".join(small)).solve()
     import doctest
     doctest.testmod()
     print("OK")
