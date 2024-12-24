@@ -1,15 +1,15 @@
 """
 Examples:
 
->>> next(MazeParser().parse_text(small).solve()).score
+>>> next(MazeParser().parse_text(small).solve())
 7036
 
->>> [x.score for x in MazeParser().parse_text(small).solve()]
+>>> list(MazeParser().parse_text(small).solve())
 [7036, 10028]
 
 Part 1:
 
->>> next(MazeParser().parse().solve()).score
+>>> next(MazeParser().parse().solve())
 65436
 """
 
@@ -84,7 +84,7 @@ class Maze:
         self.walls[point] = True
 
     def mark_start(self, point, direction):
-        self.start = Reindeer(point=point, direction=direction, score=0, trail=[])
+        self.start = Reindeer(point=point, direction=direction)
 
     def mark_end(self, point):
         self.end = point
@@ -120,56 +120,44 @@ class Maze:
     def solve(self, interactive=False):
         assert self.start is not None
         assert self.end is not None
-        search_space = ReindeerSearchSpace.from_start_end(self.start, self.end)
-        while True:
-            try:
-                reindeer = search_space.get_best()
-                if interactive:
-                    self.print(mark=reindeer.trail)
-                    time.sleep(0.2)
-                if reindeer.is_finished(self):
-                    yield reindeer
-                else:
-                    search_space.extend(reindeer.moves(self))
-            except SearchSpaceEmtpy:
-                break
+        return ReindeerSearchSpace(
+            maze=self,
+            start=self.start,
+        ).solve(interactive)
 
 class ReindeerSearchSpace:
 
-    @classmethod
-    def from_start_end(cls, reindeer, end):
-        return cls([reindeer], end)
+    def __init__(self, maze, start):
+        self.maze = maze
+        self.fringe = [start]
+        self.cost = {start: 0}
+        self.came_from = {start: None}
 
-    def __init__(self, reindeers, end):
-        self.reindeers = []
-        self.end = end
-        self.states = {}
-        self.extend(reindeers)
+    def trail(self, reindeer):
+        trail = []
+        while self.came_from[reindeer]:
+            trail.insert(0, reindeer.point)
+            reindeer = self.came_from[reindeer]
+        return trail
 
-    def get_best(self):
-        if self.reindeers:
-            self.reindeers.sort(
-                key=lambda reindeer: reindeer.optimal_score_to(self.end)
-            )
-            return self.reindeers.pop(0)
-        else:
-            raise SearchSpaceEmtpy()
-
-    def extend(self, reindeers):
-        for reindeer in reindeers:
-            state = (reindeer.point, reindeer.direction)
-            score = reindeer.optimal_score_to(self.end)
-            if state not in self.states or score < self.states[state]:
-                self.states[state] = score
-                self.reindeers.append(reindeer)
-
-class SearchSpaceEmtpy(Exception):
-    pass
+    def solve(self, interactive):
+        while self.fringe:
+            reindeer = self.fringe.pop(0)
+            if interactive:
+                self.maze.print(mark=self.trail(reindeer))
+                time.sleep(0.1)
+            if reindeer.is_finished(self.maze):
+                yield self.cost[reindeer]
+            else:
+                for (score, neighbour) in reindeer.moves(self.maze):
+                    move_cost = self.cost[reindeer] + score
+                    if neighbour not in self.cost or move_cost < self.cost[neighbour]:
+                        self.came_from[neighbour] = reindeer
+                        self.cost[neighbour] = move_cost
+                        self.fringe.append(neighbour)
+                        self.fringe.sort(key=lambda x: self.cost[x])
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
-
-    def distance_to(self, other):
-        return abs(self.x-other.x) + abs(self.y-other.y)
 
     def max(self, other):
         return Point(x=max(self.x, other.x), y=max(self.y, other.y))
@@ -207,20 +195,17 @@ class Direction(collections.namedtuple("Direction", ["direction"])):
         dy = {self.SOUTH: 1, self.NORTH: -1}.get(self.direction, 0)
         return point.move(dx=dx, dy=dy)
 
-class Reindeer(collections.namedtuple("Reindeer", ["point", "direction", "score", "trail"])):
-
-    def optimal_score_to(self, end):
-        return self.score + self.point.distance_to(end)
+class Reindeer(collections.namedtuple("Reindeer", ["point", "direction"])):
 
     def moves(self, maze):
         return [
             reindeer
             for reindeer in [
-                self.rotate_clockwise(),
-                self.rotate_counterclockwise(),
-                self.walk(),
+                (1000, self.rotate_clockwise()),
+                (1000, self.rotate_counterclockwise()),
+                (1, self.walk()),
             ]
-            if reindeer.is_valid(maze)
+            if reindeer[1].is_valid(maze)
         ]
 
     def is_valid(self, maze):
@@ -232,24 +217,20 @@ class Reindeer(collections.namedtuple("Reindeer", ["point", "direction", "score"
     def rotate_clockwise(self):
         return self._replace(
             direction=self.direction.rotate_clockwise(),
-            score=self.score+1000,
         )
 
     def rotate_counterclockwise(self):
         return self._replace(
             direction=self.direction.rotate_counterclockwise(),
-            score=self.score+1000,
         )
 
     def walk(self):
         return self._replace(
             point=self.direction.move(self.point),
-            score=self.score+1,
-            trail=self.trail+[self.point]
         )
 
 if __name__ == "__main__":
-    next(MazeParser().parse_text(empty).solve(interactive=True))
+    #next(MazeParser().parse_text(small).solve(interactive=True))
     import doctest
     doctest.testmod()
     print("OK")
