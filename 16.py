@@ -1,16 +1,13 @@
 """
 Examples:
 
->>> next(MazeParser().parse_text(small).solve())
-7036
-
->>> list(MazeParser().parse_text(small).solve())
-[7036]
+>>> [(len(trail), size) for trail, size in MazeParser().parse_text(small).solve()]
+[(45, 7036)]
 
 Part 1:
 
->>> next(MazeParser().parse().solve())
-65436
+>>> [(len(trail), size) for trail, size in MazeParser().parse().solve()]
+[(489, 65436)]
 """
 
 small = "\n".join([
@@ -131,13 +128,14 @@ class ReindeerSearchSpace:
         self.maze = maze
         self.fringe = [start]
         self.cost = {start: 0}
-        self.came_from = {start: None}
+        self.came_from = {start: []}
 
     def trail(self, reindeer):
-        trail = []
-        while self.came_from[reindeer]:
-            trail.insert(0, reindeer.point)
-            reindeer = self.came_from[reindeer]
+        trail = set()
+        if reindeer != "DONE":
+            trail.add(reindeer.point)
+        for previous in self.came_from.get(reindeer, []):
+            trail |= self.trail(previous)
         return trail
 
     def solve(self, interactive):
@@ -147,15 +145,22 @@ class ReindeerSearchSpace:
                 self.maze.print(mark=self.trail(reindeer))
                 time.sleep(0.1)
             if reindeer == "DONE":
-                yield self.cost[reindeer]
+                yield (self.trail(reindeer), self.cost[reindeer])
             else:
                 for (score, neighbour) in reindeer.moves(self.maze):
                     move_cost = self.cost[reindeer] + score
-                    if neighbour not in self.cost or move_cost < self.cost[neighbour]:
-                        self.came_from[neighbour] = reindeer
+                    if neighbour not in self.cost:
+                        self.came_from[neighbour] = [reindeer]
                         self.cost[neighbour] = move_cost
                         self.fringe.append(neighbour)
                         self.fringe.sort(key=lambda x: self.cost[x])
+                    elif move_cost < self.cost[neighbour]:
+                        self.came_from[neighbour].append(reindeer)
+                        self.cost[neighbour] = move_cost
+                        self.fringe.append(neighbour)
+                        self.fringe.sort(key=lambda x: self.cost[x])
+                    elif move_cost <= self.cost[neighbour]:
+                        self.came_from[neighbour].append(reindeer)
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
