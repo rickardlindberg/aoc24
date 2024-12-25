@@ -39,8 +39,7 @@ Part 1:
 Part 2:
 
 >>> onsen.count_ways_to_make_towel_designs()
-718579937078294   too low
-2807139376154360  too high
+724388733465031
 """
 
 import pprint
@@ -56,7 +55,7 @@ class OnsenParser:
         for index, line in enumerate(lines):
             if index == 0:
                 for towel in line.split(", "):
-                    onsen.add_towel(Towel(towel))
+                    onsen.add_towel(Towel(towel.strip()))
             elif index > 1:
                 onsen.add_design(Design(line.strip()))
         return onsen
