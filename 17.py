@@ -37,7 +37,37 @@ Register C: 0
 
 >>> manually_decompiled()
 [6, 2, 7, 2, 3, 1, 6, 0, 5]
+
+>>> find_a(ComputerParser().parse().program)
+236548287712877
 """
+
+def find_a(program, A=0):
+    if program:
+        last = NotFoundError(f"A={A}, program={program}")
+        for next_a in find_next(A, program[-1]):
+            try:
+                return find_a(program[:-1], next_a)
+            except NotFoundError as e:
+                last = e
+        raise last
+    else:
+        return A
+
+class NotFoundError(Exception):
+    pass
+
+def find_next(A, number):
+    for a3 in [0, 1]:
+        for a2 in [0, 1]:
+            for a1 in [0, 1]:
+                A = (A << 1) | a3
+                A = (A << 1) | a2
+                A = (A << 1) | a1
+                numbers = manually_decompiled(A)
+                if numbers and numbers[0] == number:
+                    yield A
+                A = A >> 3
 
 def manually_decompiled(A=47006051):
     output = []
