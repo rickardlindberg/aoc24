@@ -85,6 +85,9 @@ class Design:
         self.design = design
         self.cache = {}
 
+    def is_possible(self, towels):
+        return self.count_ways_to_make(towels) > 0
+
     def count_ways_to_make(self, towels):
         return self.count_ways_to_make_rest(self.design, towels)
 
@@ -119,7 +122,7 @@ class Onsen:
     def count_possible_towel_designs(self):
         count = 0
         for design in self.designs:
-            if design.count_ways_to_make(self.towels) > 0:
+            if design.is_possible(self.towels):
                 count += 1
         return count
 
