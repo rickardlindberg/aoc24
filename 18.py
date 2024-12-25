@@ -85,6 +85,19 @@ class MemorySpace:
     def add_incoming_byte(self, x, y):
         self.byte_locations.append(Point(x=x, y=y))
 
+    def print(self):
+        for y in range(self.size+1):
+            line = []
+            for x in range(self.size+1):
+                point = Point(x=x, y=y)
+                if point in self.corrupted:
+                    line.append("#")
+                elif point in self.path:
+                    line.append("O")
+                else:
+                    line.append("_")
+            print("".join(line))
+
     def simulate_fall(self, number_of_bytes):
         for _ in range(number_of_bytes):
             self.fall_single()
@@ -139,19 +152,6 @@ class MemorySpace:
 
     def steps(self):
         return len(self.path) - 1
-
-    def print(self):
-        for y in range(self.size+1):
-            line = []
-            for x in range(self.size+1):
-                point = Point(x=x, y=y)
-                if point in self.corrupted:
-                    line.append("#")
-                elif point in self.path:
-                    line.append("O")
-                else:
-                    line.append("_")
-            print("".join(line))
 
 class NoSolution(Exception):
     pass
