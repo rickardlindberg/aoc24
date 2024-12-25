@@ -1,5 +1,7 @@
 """
->>> example = [
+Examples:
+
+>>> memory_space = BytePositionParser().parse_lines([
 ...     "5,4",
 ...     "4,2",
 ...     "4,5",
@@ -25,9 +27,8 @@
 ...     "0,5",
 ...     "1,6",
 ...     "2,0",
-... ]
->>> memory_space = BytePositionParser().parse_lines(example, size=6).simulate_fall(12)
->>> memory_space.print()
+... ], size=6)
+>>> memory_space.simulate_fall(12).print()
 ___#___
 __#__#_
 ____#__
@@ -54,8 +55,8 @@ Part 1:
 
 Part 2:
 
->>> memory_space.simulate_until_blocked()
-Point(x=31, y=22)
+>>> print(memory_space.simulate_until_blocked().aoc_format())
+31,22
 """
 
 import collections
@@ -81,28 +82,30 @@ class MemorySpace:
         self.path = set()
         self.byte_locations = []
 
-    def simulate_until_blocked(self):
-        while True:
-            location = self.byte_locations.pop(0)
-            self.corrupted.add(location)
-            if location in self.path:
-                try:
-                    self.find_path()
-                except ValueError:
-                    return location
-
-    def simulate_fall(self, number_of_bytes):
-        for i in range(number_of_bytes):
-            self.corrupted.add(self.byte_locations.pop(0))
-        return self
-
     def add_incoming_byte(self, x, y):
         self.byte_locations.append(Point(x=x, y=y))
 
-    def steps(self):
-        return len(self.path) - 1
+    def simulate_fall(self, number_of_bytes):
+        for _ in range(number_of_bytes):
+            self.fall_single()
+        return self
+
+    def simulate_until_blocked(self):
+        while True:
+            location = self.fall_single()
+            if location in self.path:
+                try:
+                    self.find_path()
+                except NoSolution:
+                    return location
+
+    def fall_single(self):
+        location = self.byte_locations.pop(0)
+        self.corrupted.add(location)
+        return location
 
     def find_path(self):
+        self.path = set()
         start = Point(x=0, y=0)
         goal = Point(x=self.size, y=self.size)
         fringe = [start]
@@ -111,27 +114,31 @@ class MemorySpace:
         while fringe:
             point = fringe.pop(0)
             if point == goal:
-                self.path = set()
-                node = goal
-                while node is not None:
-                    self.path.add(node)
-                    node = came_from[node]
+                point = goal
+                while point is not None:
+                    self.path.add(point)
+                    point = came_from[point]
                 return self
             else:
                 for neighbour in point.neighbours():
-                    if (neighbour in self.corrupted or
-                        neighbour.x < 0 or
-                        neighbour.x > self.size or
-                        neighbour.y < 0 or
-                        neighbour.y > self.size):
-                        continue
-                    neighbour_cost = costs[point] + 1
-                    if neighbour not in costs or neighbour_cost < costs[neighbour]:
-                        fringe.append(neighbour)
-                        costs[neighbour] = neighbour_cost
-                        came_from[neighbour] = point
+                    if self.can_be_at(neighbour):
+                        neighbour_cost = costs[point] + 1
+                        if neighbour not in costs or neighbour_cost < costs[neighbour]:
+                            fringe.append(neighbour)
+                            costs[neighbour] = neighbour_cost
+                            came_from[neighbour] = point
                 fringe.sort(key=lambda point: costs[point])
-        raise ValueError(f"found no path: {costs}")
+        raise NoSolution("found no path")
+
+    def can_be_at(self, point):
+        return (
+            point not in self.corrupted and
+            0 <= point.x <= self.size and
+            0 <= point.y <= self.size
+        )
+
+    def steps(self):
+        return len(self.path) - 1
 
     def print(self):
         for y in range(self.size+1):
@@ -146,11 +153,19 @@ class MemorySpace:
                     line.append("_")
             print("".join(line))
 
+class NoSolution(Exception):
+    pass
+
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
     def neighbours(self):
-        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            yield Point(x=self.x+dx, y=self.y+dy)
+        for dx in [-1, 1]:
+            yield self._replace(x=self.x+dx)
+        for dy in [-1, 1]:
+            yield self._replace(y=self.y+dy)
+
+    def aoc_format(self):
+        return f"{self.x},{self.y}"
 
 if __name__ == "__main__":
     import doctest
