@@ -86,20 +86,23 @@ class Design:
         self.cache = {}
 
     def count_ways_to_make(self, towels):
-        return self.inner(self.design, towels)
+        return self.count_ways_to_make_rest(self.design, towels)
 
-    def inner(self, design, towels):
-        if design not in self.cache:
-            if design:
-                self.cache[design] = 0
+    def count_ways_to_make_rest(self, rest_design, towels):
+        if rest_design not in self.cache:
+            if rest_design:
+                self.cache[rest_design] = 0
                 for towel in towels:
                     try:
-                        self.cache[design] += self.inner(towel.design(design), towels)
+                        self.cache[rest_design] += self.count_ways_to_make_rest(
+                            towel.design(rest_design),
+                            towels
+                        )
                     except DesignNotPossible:
                         pass
             else:
-                self.cache[design] = 1
-        return self.cache[design]
+                self.cache[rest_design] = 1
+        return self.cache[rest_design]
 
 class Onsen:
 
