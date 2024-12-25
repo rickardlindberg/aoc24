@@ -50,6 +50,12 @@ Part 1:
 
 >>> memory_space = BytePositionParser().parse()
 >>> memory_space.simulate_fall(1024).find_path().steps()
+294
+
+Part 2:
+
+>>> memory_space.simulate_until_blocked()
+Point(x=31, y=22)
 """
 
 import collections
@@ -74,6 +80,16 @@ class MemorySpace:
         self.corrupted = set()
         self.path = set()
         self.byte_locations = []
+
+    def simulate_until_blocked(self):
+        while True:
+            location = self.byte_locations.pop(0)
+            self.corrupted.add(location)
+            if location in self.path:
+                try:
+                    self.find_path()
+                except ValueError:
+                    return location
 
     def simulate_fall(self, number_of_bytes):
         for i in range(number_of_bytes):
