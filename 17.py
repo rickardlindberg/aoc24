@@ -36,23 +36,25 @@ Register C: 0
 '6,2,7,2,3,1,6,0,5'
 
 >>> manually_decompiled()
-'6,2,7,2,3,1,6,0,5'
+[6, 2, 7, 2, 3, 1, 6, 0, 5]
 """
 
-def manually_decompiled():
-    A = 47006051
-    B = 0
-    C = 0
+def manually_decompiled(A=47006051):
     output = []
     while A != 0:
-        B = A % 8
-        B = operator.xor(B, 3)
-        C = A // 2**B
-        B = operator.xor(B, 5)
-        A = A // 2**3
-        B = operator.xor(B, C)
-        output.append(B % 8)
-    return ",".join(str(x) for x in output)
+        A, out = manually_decompiled_next(A)
+        output.append(out)
+    return output
+
+def manually_decompiled_next(A):
+    B = A % 8
+    B = operator.xor(B, 3)
+    C = A // 2**B
+    B = operator.xor(B, 5)
+    A = A // 2**3
+    B = operator.xor(B, C)
+    out = B % 8
+    return (A, out)
 
 import operator
 
