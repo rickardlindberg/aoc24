@@ -92,7 +92,7 @@ class RaceTrack:
         fringe = [start]
         while fringe:
             program = fringe.pop(0)
-            if max_score is not None and cost[program] > max_score:
+            if max_score is not None and (cost[program]+program.point.manhattan_to(self.end)) > max_score:
                 continue
             if program.point == self.end:
                 yield program.finish(cost[program])
@@ -110,7 +110,7 @@ class Program(collections.namedtuple("Program", ["point", "cheat1", "cheat2"])):
 
     def moves(self, race_track, allow_cheat):
         for point in self.point.moves():
-            if allow_cheat and self.cheat1 is None:
+            if allow_cheat and self.cheat1 is None and not race_track.can_be_at(point):
                 yield self._replace(point=point, cheat1=point)
             if race_track.can_be_at(point):
                 if self.cheat1 and not self.cheat2:
@@ -123,6 +123,9 @@ class Finish(collections.namedtuple("Finish", ["score", "cheat1", "cheat2"])):
     pass
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
+
+    def manhattan_to(self, other):
+        return abs(self.x-other.x) + abs(self.y-other.y)
 
     def moves(self):
         for dy in [-1, 1]:
