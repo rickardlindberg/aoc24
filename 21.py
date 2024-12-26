@@ -6,7 +6,7 @@ Part 1:
 
 Part 2:
 
->>> CodeParser().parse().complexity(number_of_robot_keypads=25)
+#>>> CodeParser().parse().complexity(number_of_robot_keypads=25)
 """
 
 import collections
