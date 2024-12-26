@@ -19,21 +19,21 @@ Examples:
 ...     "###############",
 ... ]))
 >>> example.race(allow_cheat=False)
-Finish(score=84, cheat1=None, cheat2=None)
+84
 >>> example.race(allow_cheat=True)
-Finish(score=20, cheat1=Point(x=6, y=7), cheat2=Point(x=5, y=7))
+20
 >>> example.count_cheats_that_would_save(picoseconds=1)
 44
 
 >>> RaceTrackParser().parse().race(allow_cheat=False)
-Finish(score=9416, cheat1=None, cheat2=None)
+9416
 >>> RaceTrackParser().parse().race(allow_cheat=True)
-Finish(score=80, cheat1=Point(x=43, y=72), cheat2=Point(x=43, y=71))
+80
 
 Part 1:
 
-#>>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100)
-#1286
+>>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100)
+1286
 """
 
 import collections
@@ -106,15 +106,47 @@ class RaceTrack:
         context.fill()
 
     def count_cheats_that_would_save(self, picoseconds):
-        max_score = self.race(allow_cheat=False).score - picoseconds
+        costs_to_end = self.map_costs()
+        max_cost = costs_to_end[self.start]
         count = 0
-        for _ in self.yield_race(allow_cheat=True, max_score=max_score):
-            count += 1
+        for point in costs_to_end:
+            for cheat_len, cheat_point in point.get_cheats():
+                if self.can_be_at(cheat_point):
+                    if (costs_to_end[cheat_point]+cheat_len) <= (costs_to_end[point] - picoseconds):
+                        count += 1
         return count
 
+    def map_costs(self):
+        fringe = set([self.start])
+        costs = {self.start: 0}
+        came_from = {self.start: None}
+        while fringe:
+            point = fringe.pop()
+            if point == self.end:
+                for free in self.free:
+                    assert free in costs
+                costs_to_end = {}
+                cost = 0
+                point = self.end
+                while point is not None:
+                    costs_to_end[point] = cost
+                    point = came_from[point]
+                    cost += 1
+                return costs_to_end
+            for neighbour in point.moves():
+                if self.can_be_at(neighbour):
+                    neighbour_cost = costs[point] + 1
+                    if neighbour not in costs or neighbour_cost < costs[neighbour]:
+                        costs[neighbour] = neighbour_cost
+                        came_from[neighbour] = point
+                        fringe.add(neighbour)
+        raise ValueError("no map cost found")
+
     def race(self, allow_cheat):
+        if not allow_cheat:
+            return self.map_costs()[self.start]
         for finish in self.yield_race(allow_cheat):
-            return finish
+            return finish.score
         raise ValueError("no solution found")
 
     def yield_race(self, allow_cheat, max_score=None):
@@ -201,6 +233,26 @@ class Finish(collections.namedtuple("Finish", ["score", "cheat1", "cheat2"])):
     pass
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
+
+    def get_cheats(self, size=2):
+        """
+        >>> for x in Point(x=0, y=0).get_cheats(1):
+        ...     print(x)
+        (1, Point(x=-1, y=0))
+        (1, Point(x=1, y=0))
+        (1, Point(x=0, y=-1))
+        (1, Point(x=0, y=1))
+        """
+        def inner(start, current, size):
+            if size == 0:
+                return set([(start, current)])
+            else:
+                cheats = set()
+                for move in current.moves():
+                    cheats |= inner(start, move, size-1)
+                return cheats
+        for start, current in inner(start=self, current=self, size=size):
+            yield (size, current)
 
     def moves(self):
         for dy in [-1, 1]:
