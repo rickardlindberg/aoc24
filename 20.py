@@ -24,6 +24,7 @@ Examples:
 20
 >>> example.count_cheats_that_would_save(picoseconds=1, cheat_size=2)
 44
+
 >>> example.count_cheats_that_would_save(picoseconds=50, cheat_size=20)
 285
 
@@ -39,8 +40,8 @@ Part 1:
 
 Part 2:
 
-#>>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100, cheat_size=20)
-#1286
+>>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100, cheat_size=20)
+989316
 """
 
 import collections
@@ -100,6 +101,9 @@ class RaceTrack:
     def can_be_at(self, point):
         return point in self.cheats or point in self.free
 
+    def is_inside_grid(self, point):
+        return point in self.free or point in self.walls
+
     def draw(self, context, path):
         offset = 3
         size = 5
@@ -116,17 +120,23 @@ class RaceTrack:
         costs_to_end = self.map_costs()
         max_cost = costs_to_end[self.start]
         count = 0
+
+        #cheats = set()
+        #for index, point in enumerate(costs_to_end):
+        #    print(f"point {index+1} / {len(costs_to_end)}")
+        #    for cheat_len, start, end in point.get_cheats(cheat_size, self):
+        #        if self.can_be_at(end):
+        #            cheats.add((cheat_len, start, end))
+
         cheats = set()
-        for point in costs_to_end:
-            for cheat_len, start, end in point.get_cheats(cheat_size):
-                if self.can_be_at(end):
-                    cheats.add((cheat_len, start, end))
-        seen = set()
+        for start in costs_to_end:
+            for end in costs_to_end:
+                manhattan = start.manhattan_to(end)
+                if 1 <= manhattan <= cheat_size:
+                    cheats.add((manhattan, start, end))
+
         saves = {}
         for cheat_len, start, end in sorted(cheats, key=lambda x: x[0]):
-            if (start, end) in seen:
-                continue
-            seen.add((start, end))
             save = costs_to_end[start] - (costs_to_end[end]+cheat_len)
             if save >= picoseconds:
                 if save not in saves:
@@ -256,14 +266,16 @@ class Finish(collections.namedtuple("Finish", ["score", "cheat1", "cheat2"])):
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
-    def get_cheats(self, max_size=2):
+    def get_cheats(self, max_size, race_track):
         """
-        >>> for x in Point(x=0, y=0).get_cheats(1):
-        ...     print(x)
-        (1, Point(x=0, y=0), Point(x=0, y=-1))
-        (1, Point(x=0, y=0), Point(x=0, y=1))
-        (1, Point(x=0, y=0), Point(x=-1, y=0))
-        (1, Point(x=0, y=0), Point(x=1, y=0))
+        #>>> for x in Point(x=0, y=0).get_cheats(1):
+        #...     print(x)
+        #(1, Point(x=0, y=0), Point(x=0, y=-1))
+        #(1, Point(x=0, y=0), Point(x=0, y=1))
+        #(1, Point(x=0, y=0), Point(x=-1, y=0))
+        #(1, Point(x=0, y=0), Point(x=1, y=0))
+
+        #>>> len(Point(x=0, y=0).get_cheats(20))
         """
         #result = set()
         #look = set([(self, 0)])
@@ -284,7 +296,8 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
                 result.add((size, self, point))
             if size < max_size:
                 for neighbour in point.moves():
-                    explore.add((neighbour, size+1))
+                    if race_track.is_inside_grid(neighbour):
+                        explore.add((neighbour, size+1))
         return result
 
         #def inner(start, current, size):
@@ -306,6 +319,9 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
 
     def move(self, dx=0, dy=0):
         return self._replace(x=self.x+dx, y=self.y+dy)
+
+    def manhattan_to(self, other):
+        return abs(self.x-other.x) + abs(self.y-other.y)
 
 class Animation:
 
@@ -334,15 +350,17 @@ class Animation:
 if __name__ == "__main__":
     import sys
     if "interactive" in sys.argv[1:]:
+        print("go")
+        print(RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100, cheat_size=20))
         #print(RaceTrackParser().parse().with_debug().count_cheats_that_would_save(picoseconds=100))
-        import gi
-        gi.require_version("Gtk", "3.0")
-        from gi.repository import Gtk
-        import time
-        Animation(RaceTrackParser().parse().get_search(
-            allow_cheat=False,
-            max_score=9416
-        )).run()
+        #import gi
+        #gi.require_version("Gtk", "3.0")
+        #from gi.repository import Gtk
+        #import time
+        #Animation(RaceTrackParser().parse().get_search(
+        #    allow_cheat=False,
+        #    max_score=9416
+        #)).run()
     else:
         import doctest
         doctest.testmod()
