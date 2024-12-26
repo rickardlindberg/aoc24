@@ -1,6 +1,12 @@
 """
->>> CodeParser().parse().complexity()
+Part 1:
+
+>>> CodeParser().parse().complexity(number_of_robot_keypads=2)
 94426
+
+Part 2:
+
+>>> CodeParser().parse().complexity(number_of_robot_keypads=25)
 """
 
 import collections
@@ -26,16 +32,19 @@ class Codes:
     def add(self, code):
         self.codes.append(code)
 
-    def complexity(self):
-        return sum(code.complexity() for code in self.codes)
+    def complexity(self, number_of_robot_keypads):
+        return sum(
+            code.complexity(number_of_robot_keypads=number_of_robot_keypads)
+            for code in self.codes
+        )
 
 class Code:
 
     def __init__(self, code):
         self.code = code
 
-    def complexity(self):
-        return self.numeric_part() * self.button_presses()
+    def complexity(self, number_of_robot_keypads):
+        return self.numeric_part() * self.button_presses(number_of_robot_keypads)
 
     def numeric_part(self):
         """
@@ -44,18 +53,21 @@ class Code:
         """
         return int(self.code.replace("A", ""))
 
-    def button_presses(self):
-        return ButtonPressSearch().find_shortest_to(self.code)
+    def button_presses(self, number_of_robot_keypads):
+        return ButtonPressSearch().find_shortest_to(
+            code=self.code,
+            number_of_robot_keypads=number_of_robot_keypads,
+        )
 
 class ButtonPressSearch:
 
     """
-    >>> ButtonPressSearch().find_shortest_to("A")
+    >>> ButtonPressSearch().find_shortest_to(code="A", number_of_robot_keypads=2)
     1
     """
 
-    def find_shortest_to(self, numeric):
-        start = ButtonSearchState(robot1="A", robot2="A", numeric="A", out=numeric)
+    def find_shortest_to(self, code, number_of_robot_keypads):
+        start = ButtonSearchState(robot1="A", robot2="A", numeric="A", out=code)
         end = ButtonSearchState(robot1="A", robot2="A", numeric="A", out="")
         fringe = [start]
         costs = {start: 0}
@@ -63,7 +75,7 @@ class ButtonPressSearch:
             state = fringe.pop(0)
             if state == end:
                 return costs[state]
-            for neighbour in state.neighbours():
+            for neighbour in state.neighbours(number_of_robot_keypads):
                 neighbour_cost = costs[state] + 1
                 if neighbour not in costs or neighbour_cost < costs[neighbour]:
                     costs[neighbour] = neighbour_cost
@@ -77,7 +89,7 @@ class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robot1", "
     you -> robot1 -> robot2 -> numeric
     """
 
-    def neighbours(self):
+    def neighbours(self, number_of_robot_keypads):
         for my_action in ["<", ">", "^", "v"]:
             try:
                 yield self._replace(
