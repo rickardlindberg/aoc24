@@ -18,29 +18,58 @@ Examples:
 ...     "#...#...#...###",
 ...     "###############",
 ... ]))
->>> example.race(allow_cheat=False)
-84
->>> example.race(allow_cheat=True)
-20
->>> example.count_cheats_that_would_save(picoseconds=1, cheat_size=2)
-44
+>>> race_results = example.race()
+>>> race_results.print(maximum_cheat_duration=2, minimum_picoseconds_saved=1)
+Best score = 84
+Best cheat score = 20
+Cheats:
+- 14 save 2 picoseconds
+- 14 save 4 picoseconds
+- 2 save 6 picoseconds
+- 4 save 8 picoseconds
+- 2 save 10 picoseconds
+- 3 save 12 picoseconds
+- 1 save 20 picoseconds
+- 1 save 36 picoseconds
+- 1 save 38 picoseconds
+- 1 save 40 picoseconds
+- 1 save 64 picoseconds
+Total: 44
 
->>> example.count_cheats_that_would_save(picoseconds=50, cheat_size=20)
-285
-
->>> RaceTrackParser().parse().race(allow_cheat=False)
-9416
->>> RaceTrackParser().parse().race(allow_cheat=True)
-80
+>>> race_results.print(maximum_cheat_duration=20, minimum_picoseconds_saved=50)
+Best score = 84
+Best cheat score = 8
+Cheats:
+- 32 save 50 picoseconds
+- 31 save 52 picoseconds
+- 29 save 54 picoseconds
+- 39 save 56 picoseconds
+- 25 save 58 picoseconds
+- 23 save 60 picoseconds
+- 20 save 62 picoseconds
+- 19 save 64 picoseconds
+- 12 save 66 picoseconds
+- 14 save 68 picoseconds
+- 12 save 70 picoseconds
+- 22 save 72 picoseconds
+- 4 save 74 picoseconds
+- 3 save 76 picoseconds
+Total: 285
 
 Part 1:
 
->>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100, cheat_size=2)
+>>> RaceTrackParser().parse().race().count_cheats(
+...     minimum_picoseconds_saved=100,
+...     maximum_cheat_duration=2,
+... )
 1286
 
 Part 2:
 
->>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100, cheat_size=20)
+>>> RaceTrackParser().parse().race().count_cheats(
+...     minimum_picoseconds_saved=100,
+...     maximum_cheat_duration=20,
+... )
 989316
 """
 
@@ -104,26 +133,8 @@ class RaceTrack:
         context.set_source_rgb(1, 0, 0)
         context.fill()
 
-    def count_cheats_that_would_save(self, picoseconds, cheat_size):
-        costs_to_end = self.map_costs()
-        max_cost = costs_to_end[self.start]
-        count = 0
-        cheats = set()
-        for start in costs_to_end:
-            for end in costs_to_end:
-                manhattan = start.manhattan_to(end)
-                if 1 <= manhattan <= cheat_size:
-                    cheats.add((manhattan, start, end))
-        saves = {}
-        for cheat_len, start, end in sorted(cheats, key=lambda x: x[0]):
-            save = costs_to_end[start] - (costs_to_end[end]+cheat_len)
-            if save >= picoseconds:
-                if save not in saves:
-                    saves[save] = 1
-                else:
-                    saves[save] += 1
-                count += 1
-        return count
+    def race(self):
+        return RaceResults(self.map_costs(), self.start)
 
     def map_costs(self):
         fringe = set([self.start])
@@ -151,19 +162,6 @@ class RaceTrack:
                         fringe.add(neighbour)
         raise ValueError("no map cost found")
 
-    def race(self, allow_cheat):
-        if not allow_cheat:
-            return self.map_costs()[self.start]
-        for finish in self.yield_race(allow_cheat):
-            return finish.score
-        raise ValueError("no solution found")
-
-    def yield_race(self, allow_cheat, max_score=None):
-        yield from self.get_search(
-            allow_cheat=allow_cheat,
-            max_score=max_score
-        ).run()
-
     def get_search(self, allow_cheat, max_score):
         return Search(
             allow_cheat=allow_cheat,
@@ -172,6 +170,58 @@ class RaceTrack:
             max_score=max_score,
             race_track=self
         )
+
+class RaceResults:
+
+    def __init__(self, costs_to_end, start):
+        self.costs_to_end = costs_to_end
+        self.start = start
+
+    def print(self, **kwargs):
+        cheat_scores = self.cheat_scores(**kwargs)
+        print(f"Best score = {self.score()}")
+        print(f"Best cheat score = {self.score()-cheat_scores.best()}")
+        print("Cheats:")
+        cheat_scores.print()
+
+    def score(self):
+        return self.costs_to_end[self.start]
+
+    def count_cheats(self, **kwargs):
+        return self.cheat_scores(**kwargs).count()
+
+    def cheat_scores(self, maximum_cheat_duration, minimum_picoseconds_saved):
+        cheat_scores = CheatScores()
+        for start in self.costs_to_end:
+            for end in self.costs_to_end:
+                manhattan = start.manhattan_to(end)
+                if 1 <= manhattan <= maximum_cheat_duration:
+                    save = self.costs_to_end[start] - (self.costs_to_end[end]+manhattan)
+                    if save >= minimum_picoseconds_saved:
+                        cheat_scores.add(save)
+        return cheat_scores
+
+class CheatScores:
+
+    def __init__(self):
+        self.scores = {}
+
+    def print(self):
+        for saved in sorted(self.scores.keys()):
+            print(f"- {self.scores[saved]} save {saved} picoseconds")
+        print(f"Total: {self.count()}")
+
+    def add(self, points_saved):
+        if points_saved not in self.scores:
+            self.scores[points_saved] = 1
+        else:
+            self.scores[points_saved] += 1
+
+    def best(self):
+        return max(self.scores.keys())
+
+    def count(self):
+        return sum(self.scores.values())
 
 class Search:
 
