@@ -45,6 +45,48 @@ class Code:
         return int(self.code.replace("A", ""))
 
     def button_presses(self):
+        return ButtonPressSearch().find_shortest_to(self.code)
+
+class ButtonPressSearch:
+
+    """
+    >>> ButtonPressSearch().find_shortest_to("9")
+    1
+    """
+
+    def find_shortest_to(self, numeric):
+        start = ButtonSearchState(robot1="A", robot2="A", numeric="A", out="")
+        end = ButtonSearchState(robot1="A", robot2="A", numeric="A", out=numeric)
+        fringe = [start]
+        costs = {start: 0}
+        while fringe:
+            state = fringe.pop(0)
+            if state == end:
+                return costs[state]
+            for neighbour in state.neighbours():
+                neighbour_cost = costs[state] + 1
+                if neighbour not in costs or neighbour_cost < costs[neighbour]:
+                    costs[neighbour] = neighbour_cost
+                    fringe.append(neighbour)
+            fringe.sort(key=lambda state: costs[state] + state.estimate_left(end))
+        return 1 # TODO: raise exception
+
+class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robot1", "robot2", "numeric", "out"])):
+
+    """
+    you -> robot1 -> robot2 -> numeric
+    """
+
+    def neighbours(self):
+        return []
+        #for my_press in ["<", ">", "^", "v"]:
+        #    yield self._replace(you=my_press)
+        #    yield self._replace(you="A")
+
+        #numeric = NumericKeypad()
+        #directional = DirectionalKeypad()
+
+    def estimate_left(self, goal):
         return 1
 
 class NumericKeypad:
@@ -68,6 +110,21 @@ class NumericKeypad:
     def print_state(self):
         self.grid.print()
 
+    def can_do(self, state, action):
+        return action in {
+            "7": "A>v",
+            "8": "A<>v",
+            "9": "A<v",
+            "4": "A>^v",
+            "5": "A<>^v",
+            "6": "A<^v",
+            "1": "A>^",
+            "2": "A<>^v",
+            "3": "A<^v",
+            "0": "A>^",
+            "A": "A<^",
+        }[state]
+
 class DirectionalKeypad:
 
     """
@@ -84,6 +141,15 @@ class DirectionalKeypad:
 
     def print_state(self):
         self.grid.print()
+
+    def can_do(self, state, action):
+        return action in {
+            "^": "A>v",
+            "A": "A<v",
+            "<": "A>",
+            "v": "A<>^",
+            ">": "A<^",
+        }[state]
 
 class Grid:
 
@@ -123,7 +189,12 @@ class Grid:
         self.states[point] = char
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
-    pass
+
+    def neighbours(self):
+        for dx in [-1, 1]:
+            yield self._replace(x=self.x+dx)
+        for dy in [-1, 1]:
+            yield self._replace(y=self.y+dy)
 
 if __name__ == "__main__":
     import doctest
