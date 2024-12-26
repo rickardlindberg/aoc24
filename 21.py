@@ -45,12 +45,12 @@ class Code:
         return int(self.code.replace("A", ""))
 
     def button_presses(self):
-        return ButtonPressSearch().find_shortest_to(self.code)
+        return ButtonPressSearch().find_shortest_to(self.code[0])
 
 class ButtonPressSearch:
 
     """
-    >>> ButtonPressSearch().find_shortest_to("9")
+    >>> ButtonPressSearch().find_shortest_to("A")
     1
     """
 
@@ -69,7 +69,7 @@ class ButtonPressSearch:
                     costs[neighbour] = neighbour_cost
                     fringe.append(neighbour)
             fringe.sort(key=lambda state: costs[state] + state.estimate_left(end))
-        return 1 # TODO: raise exception
+        raise ValueError("no shortest path found")
 
 class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robot1", "robot2", "numeric", "out"])):
 
@@ -78,13 +78,36 @@ class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robot1", "
     """
 
     def neighbours(self):
-        return []
-        #for my_press in ["<", ">", "^", "v"]:
-        #    yield self._replace(you=my_press)
-        #    yield self._replace(you="A")
+        for my_action in ["<", ">", "^", "v"]:
+            try:
+                yield self._replace(
+                    robot1=DirectionalKeypad().do(state=self.robot1, action=my_action)
+                )
+            except InvalidMove:
+                pass
+        yield from self.my_action_a()
 
-        #numeric = NumericKeypad()
-        #directional = DirectionalKeypad()
+    def my_action_a(self):
+        if self.robot1 == "A":
+            yield from self.robot1_action_a()
+        else:
+            try:
+                yield self._replace(
+                    robot2=DirectionalKeypad().do(state=self.robot2, action=self.robot1)
+                )
+            except InvalidMove:
+                pass
+
+    def robot1_action_a(self):
+        if self.robot2 == "A":
+            yield self._replace(out=self.numeric)
+        else:
+            try:
+                yield self._replace(
+                    numeric=NumericKeypad().do(state=self.numeric, action=self.robot2)
+                )
+            except InvalidMove:
+                pass
 
     def estimate_left(self, goal):
         return 1
@@ -97,16 +120,20 @@ class NumericKeypad:
      4  5  6
      1  2  3
         0 (A)
-    >>> NumericKeypad().can_do(state="A", action="A")
-    True
-    >>> NumericKeypad().can_do(state="A", action="^")
-    True
-    >>> NumericKeypad().can_do(state="A", action="<")
-    True
-    >>> NumericKeypad().can_do(state="A", action=">")
-    False
-    >>> NumericKeypad().can_do(state="A", action="v")
-    False
+    >>> NumericKeypad().do(state="A", action="A")
+    'A'
+    >>> NumericKeypad().do(state="A", action="^")
+    '3'
+    >>> NumericKeypad().do(state="A", action="<")
+    '0'
+    >>> NumericKeypad().do(state="A", action=">")
+    Traceback (most recent call last):
+      ...
+    InvalidMove: can't do > in A
+    >>> NumericKeypad().do(state="A", action="v")
+    Traceback (most recent call last):
+      ...
+    InvalidMove: can't do v in A
     """
 
     def __init__(self):
@@ -120,20 +147,8 @@ class NumericKeypad:
     def print(self, state):
         self.grid.print(state)
 
-    def can_do(self, state, action):
-        return action in {
-            "7": "A>v",
-            "8": "A<>v",
-            "9": "A<v",
-            "4": "A>^v",
-            "5": "A<>^v",
-            "6": "A<^v",
-            "1": "A>^",
-            "2": "A<>^v",
-            "3": "A<^v",
-            "0": "A>^",
-            "A": "A<^",
-        }[state]
+    def do(self, state, action):
+        return self.grid.do(state, action)
 
 class DirectionalKeypad:
 
@@ -141,14 +156,16 @@ class DirectionalKeypad:
     >>> DirectionalKeypad().print(state="^")
        (^) A
      <  v  >
-    >>> DirectionalKeypad().can_do(state="^", action="A")
-    True
-    >>> DirectionalKeypad().can_do(state="^", action=">")
-    True
-    >>> DirectionalKeypad().can_do(state="^", action="v")
-    True
-    >>> DirectionalKeypad().can_do(state="^", action="<")
-    False
+    >>> DirectionalKeypad().do(state="^", action="A")
+    '^'
+    >>> DirectionalKeypad().do(state="^", action=">")
+    'A'
+    >>> DirectionalKeypad().do(state="^", action="v")
+    'v'
+    >>> DirectionalKeypad().do(state="^", action="<")
+    Traceback (most recent call last):
+      ...
+    InvalidMove: can't do < in ^
     """
 
     def __init__(self):
@@ -160,8 +177,8 @@ class DirectionalKeypad:
     def print(self, state):
         self.grid.print(state)
 
-    def can_do(self, state, action):
-        return self.grid.can_do(state, action)
+    def do(self, state, action):
+        return self.grid.do(state, action)
 
 class Grid:
 
@@ -191,8 +208,12 @@ class Grid:
                     line.append(f" {char} ")
             print("".join(line).rstrip())
 
-    def can_do(self, state, action):
-        return self.state_point(state).do(action) in self.states
+    def do(self, state, action):
+        next_point = self.state_point(state).do(action)
+        if next_point in self.states:
+            return self.states[next_point]
+        else:
+            raise InvalidMove(f"can't do {action} in {state}")
 
     def add(self, point, char):
         self.states[point] = char
@@ -201,6 +222,9 @@ class Grid:
         for point in self.states:
             if self.states[point] == state:
                 return point
+
+class InvalidMove(Exception):
+    pass
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
