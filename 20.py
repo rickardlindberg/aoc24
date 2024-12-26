@@ -32,7 +32,8 @@ Finish(score=80, cheat1=Point(x=43, y=72), cheat2=Point(x=43, y=71))
 
 Part 1:
 
-#>>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100)
+>>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100)
+1286
 """
 
 import collections
@@ -56,24 +57,41 @@ class RaceTrackParser:
                     race_track.set_end(point)
                 else:
                     assert tile == "."
+                    race_track.add_free(point)
         return race_track
 
 class RaceTrack:
 
     def __init__(self):
         self.walls = set()
+        self.free = set()
+        self.cheats = set()
+        self.debug = False
+
+    def debug_log(self, item):
+        if self.debug:
+            print(item)
+
+    def with_debug(self):
+        self.debug = True
+        return self
 
     def add_wall(self, point):
         self.walls.add(point)
 
+    def add_free(self, point):
+        self.free.add(point)
+
     def set_start(self, point):
         self.start = point
+        self.add_free(point)
 
     def set_end(self, point):
         self.end = point
+        self.add_free(point)
 
     def can_be_at(self, point):
-        return point not in self.walls
+        return point in self.cheats or point in self.free
 
     def draw(self, context, path):
         min_x = min(point.x for point in self.walls)
@@ -95,10 +113,25 @@ class RaceTrack:
                     context.fill()
 
     def count_cheats_that_would_save(self, picoseconds):
-        return len(list(self.yield_race(
-            allow_cheat=True,
-            max_score=self.race(allow_cheat=False).score-picoseconds,
-        )))
+        max_score = self.race(allow_cheat=False).score - picoseconds
+        count = 0
+        cheats = self.find_possible_cheats()
+        for index, cheat in enumerate(cheats):
+            self.debug_log(f"{int(100*(index+1)/len(cheats))}% ({index+1}/{len(cheats)})")
+            self.cheats = set([cheat.wall_point])
+            for _ in self.yield_race(allow_cheat=False, max_score=max_score):
+                count += 1
+                break
+        self.cheats = set()
+        return count
+
+    def find_possible_cheats(self):
+        cheats = set()
+        for wall in self.walls:
+            for move, opposite in wall.moves_with_opposites():
+                if self.can_be_at(move) and self.can_be_at(opposite):
+                    cheats.add(Cheat(wall_point=wall, out_point=None))
+        return cheats
 
     def race(self, allow_cheat):
         for finish in self.yield_race(allow_cheat):
@@ -140,6 +173,9 @@ class Search:
             path.add(node.point)
             node = self.came_from[node]
         self.race_track.draw(context, path)
+        context.move_to(10, 10)
+        context.set_source_rgb(0, 0, 0)
+        context.show_text(f"{len(self.fringe)}")
 
     def run(self):
         while self.fringe:
@@ -162,6 +198,9 @@ class Search:
                         self.cost[next_program] = next_program_cost
                         self.fringe.append(next_program)
                         self.came_from[next_program] = program
+                #self.fringe.sort(key=lambda program:
+                #    self.cost[program]+program.point.manhattan_to(self.end)
+                #)
 
 class Program(collections.namedtuple("Program", ["point", "cheat1", "cheat2"])):
 
@@ -179,6 +218,9 @@ class Program(collections.namedtuple("Program", ["point", "cheat1", "cheat2"])):
                     cheat2 = self.cheat2
                 yield self._replace(point=point, cheat2=cheat2)
 
+class Cheat(collections.namedtuple("Cheat", ["wall_point", "out_point"])):
+    pass
+
 class Finish(collections.namedtuple("Finish", ["score", "cheat1", "cheat2"])):
     pass
 
@@ -189,9 +231,16 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
 
     def moves(self):
         for dy in [-1, 1]:
-            yield self._replace(y=self.y+dy)
+            yield self.move(dy=dy)
         for dx in [-1, 1]:
-            yield self._replace(x=self.x+dx)
+            yield self.move(dx=dx)
+
+    def moves_with_opposites(self):
+        yield (self.move(dx=-1), self.move(dx=1))
+        yield (self.move(dy=-1), self.move(dy=1))
+
+    def move(self, dx=0, dy=0):
+        return self._replace(x=self.x+dx, y=self.y+dy)
 
 class Animation:
 
@@ -220,12 +269,13 @@ class Animation:
 if __name__ == "__main__":
     import sys
     if "interactive" in sys.argv[1:]:
+        #print(RaceTrackParser().parse().with_debug().count_cheats_that_would_save(picoseconds=100))
         import gi
         gi.require_version("Gtk", "3.0")
         from gi.repository import Gtk
         import time
         Animation(RaceTrackParser().parse().get_search(
-            allow_cheat=True,
+            allow_cheat=False,
             max_score=9416
         )).run()
     else:
