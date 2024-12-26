@@ -74,15 +74,6 @@ class RaceTrack:
         self.walls = set()
         self.free = set()
         self.cheats = set()
-        self.debug = False
-
-    def debug_log(self, item):
-        if self.debug:
-            print(item)
-
-    def with_debug(self):
-        self.debug = True
-        return self
 
     def add_wall(self, point):
         self.walls.add(point)
@@ -101,9 +92,6 @@ class RaceTrack:
     def can_be_at(self, point):
         return point in self.cheats or point in self.free
 
-    def is_inside_grid(self, point):
-        return point in self.free or point in self.walls
-
     def draw(self, context, path):
         offset = 3
         size = 5
@@ -120,21 +108,12 @@ class RaceTrack:
         costs_to_end = self.map_costs()
         max_cost = costs_to_end[self.start]
         count = 0
-
-        #cheats = set()
-        #for index, point in enumerate(costs_to_end):
-        #    print(f"point {index+1} / {len(costs_to_end)}")
-        #    for cheat_len, start, end in point.get_cheats(cheat_size, self):
-        #        if self.can_be_at(end):
-        #            cheats.add((cheat_len, start, end))
-
         cheats = set()
         for start in costs_to_end:
             for end in costs_to_end:
                 manhattan = start.manhattan_to(end)
                 if 1 <= manhattan <= cheat_size:
                     cheats.add((manhattan, start, end))
-
         saves = {}
         for cheat_len, start, end in sorted(cheats, key=lambda x: x[0]):
             save = costs_to_end[start] - (costs_to_end[end]+cheat_len)
@@ -144,8 +123,6 @@ class RaceTrack:
                 else:
                     saves[save] += 1
                 count += 1
-        #for save, x in sorted(saves.items(), key=lambda x: x[0]):
-        #    print("save", x, save)
         return count
 
     def map_costs(self):
@@ -258,58 +235,13 @@ class Program(collections.namedtuple("Program", ["point", "cheat1", "cheat2"])):
                     cheat2 = self.cheat2
                 yield self._replace(point=point, cheat2=cheat2)
 
-class Cheat(collections.namedtuple("Cheat", ["wall_point", "out_point"])):
-    pass
-
 class Finish(collections.namedtuple("Finish", ["score", "cheat1", "cheat2"])):
     pass
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
-    def get_cheats(self, max_size, race_track):
-        """
-        #>>> for x in Point(x=0, y=0).get_cheats(1):
-        #...     print(x)
-        #(1, Point(x=0, y=0), Point(x=0, y=-1))
-        #(1, Point(x=0, y=0), Point(x=0, y=1))
-        #(1, Point(x=0, y=0), Point(x=-1, y=0))
-        #(1, Point(x=0, y=0), Point(x=1, y=0))
-
-        #>>> len(Point(x=0, y=0).get_cheats(20))
-        """
-        #result = set()
-        #look = set([(self, 0)])
-        #while look:
-        #    point, size == look.pop()
-        #    if size > 0:
-        #        result.add((size, point))
-        #    if size <= max_size:
-        #        for point in self.moves():
-        #            look.add((point, moves))
-        #return result
-
-        result = set()
-        explore = set([(self, 0)])
-        while explore:
-            point, size = explore.pop()
-            if size > 0:
-                result.add((size, self, point))
-            if size < max_size:
-                for neighbour in point.moves():
-                    if race_track.is_inside_grid(neighbour):
-                        explore.add((neighbour, size+1))
-        return result
-
-        #def inner(start, current, size):
-        #    if size == 0:
-        #        return set([(start, current)])
-        #    else:
-        #        cheats = set()
-        #        for move in current.moves():
-        #            cheats |= inner(start, move, size-1)
-        #        return cheats
-        #for start, current in inner(start=self, current=self, size=max_size):
-        #    yield (max_size, current)
+    def manhattan_to(self, other):
+        return abs(self.x-other.x) + abs(self.y-other.y)
 
     def moves(self):
         for dy in [-1, 1]:
@@ -319,9 +251,6 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
 
     def move(self, dx=0, dy=0):
         return self._replace(x=self.x+dx, y=self.y+dy)
-
-    def manhattan_to(self, other):
-        return abs(self.x-other.x) + abs(self.y-other.y)
 
 class Animation:
 
@@ -342,25 +271,20 @@ class Animation:
         context.paint()
         context.set_source_rgb(0, 0, 0)
         self.state.draw(context)
-        result = self.state.step()
-        if result:
-            print(result)
+        self.state.step()
         widget.queue_draw()
 
 if __name__ == "__main__":
     import sys
     if "interactive" in sys.argv[1:]:
-        print("go")
-        print(RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100, cheat_size=20))
-        #print(RaceTrackParser().parse().with_debug().count_cheats_that_would_save(picoseconds=100))
-        #import gi
-        #gi.require_version("Gtk", "3.0")
-        #from gi.repository import Gtk
-        #import time
-        #Animation(RaceTrackParser().parse().get_search(
-        #    allow_cheat=False,
-        #    max_score=9416
-        #)).run()
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk
+        import time
+        Animation(RaceTrackParser().parse().get_search(
+            allow_cheat=False,
+            max_score=9416
+        )).run()
     else:
         import doctest
         doctest.testmod()
