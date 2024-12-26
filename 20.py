@@ -280,7 +280,6 @@ if __name__ == "__main__":
         import gi
         gi.require_version("Gtk", "3.0")
         from gi.repository import Gtk
-        import time
         Animation(RaceTrackParser().parse().get_search(
             allow_cheat=False,
             max_score=9416
