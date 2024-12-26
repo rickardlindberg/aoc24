@@ -32,8 +32,8 @@ Finish(score=80, cheat1=Point(x=43, y=72), cheat2=Point(x=43, y=71))
 
 Part 1:
 
->>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100)
-1286
+#>>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100)
+#1286
 """
 
 import collections
@@ -108,23 +108,9 @@ class RaceTrack:
     def count_cheats_that_would_save(self, picoseconds):
         max_score = self.race(allow_cheat=False).score - picoseconds
         count = 0
-        cheats = self.find_possible_cheats()
-        for index, cheat in enumerate(cheats):
-            self.debug_log(f"{int(100*(index+1)/len(cheats))}% ({index+1}/{len(cheats)})")
-            self.cheats = set([cheat.wall_point])
-            for _ in self.yield_race(allow_cheat=False, max_score=max_score):
-                count += 1
-                break
-        self.cheats = set()
+        for _ in self.yield_race(allow_cheat=True, max_score=max_score):
+            count += 1
         return count
-
-    def find_possible_cheats(self):
-        cheats = set()
-        for wall in self.walls:
-            for move, opposite in wall.moves_with_opposites():
-                if self.can_be_at(move) and self.can_be_at(opposite):
-                    cheats.add(Cheat(wall_point=wall, out_point=None))
-        return cheats
 
     def race(self, allow_cheat):
         for finish in self.yield_race(allow_cheat):
@@ -180,7 +166,7 @@ class Search:
         if self.fringe:
             program = self.fringe.pop(0)
             self.last_program = program
-            if self.max_score is not None and (self.cost[program]+program.point.manhattan_to(self.end)) > self.max_score:
+            if self.max_score is not None and self.cost[program] > self.max_score:
                 return
             if program.point == self.end:
                 return program.finish(self.cost[program])
@@ -191,9 +177,6 @@ class Search:
                         self.cost[next_program] = next_program_cost
                         self.fringe.append(next_program)
                         self.came_from[next_program] = program
-                #self.fringe.sort(key=lambda program:
-                #    self.cost[program]+program.point.manhattan_to(self.end)
-                #)
 
 class Program(collections.namedtuple("Program", ["point", "cheat1", "cheat2"])):
 
@@ -219,18 +202,11 @@ class Finish(collections.namedtuple("Finish", ["score", "cheat1", "cheat2"])):
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
-    def manhattan_to(self, other):
-        return abs(self.x-other.x) + abs(self.y-other.y)
-
     def moves(self):
         for dy in [-1, 1]:
             yield self.move(dy=dy)
         for dx in [-1, 1]:
             yield self.move(dx=dx)
-
-    def moves_with_opposites(self):
-        yield (self.move(dx=-1), self.move(dx=1))
-        yield (self.move(dy=-1), self.move(dy=1))
 
     def move(self, dx=0, dy=0):
         return self._replace(x=self.x+dx, y=self.y+dy)
