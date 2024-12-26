@@ -92,23 +92,33 @@ class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robot1", "
 class NumericKeypad:
 
     """
-    >>> NumericKeypad().print_state()
+    >>> NumericKeypad().print(state="A")
      7  8  9
      4  5  6
      1  2  3
         0 (A)
+    >>> NumericKeypad().can_do(state="A", action="A")
+    True
+    >>> NumericKeypad().can_do(state="A", action="^")
+    True
+    >>> NumericKeypad().can_do(state="A", action="<")
+    True
+    >>> NumericKeypad().can_do(state="A", action=">")
+    False
+    >>> NumericKeypad().can_do(state="A", action="v")
+    False
     """
 
     def __init__(self):
-        self.grid = Grid.from_lines("A", [
+        self.grid = Grid.from_lines([
             "789",
             "456",
             "123",
             " 0A",
         ])
 
-    def print_state(self):
-        self.grid.print()
+    def print(self, state):
+        self.grid.print(state)
 
     def can_do(self, state, action):
         return action in {
@@ -128,73 +138,83 @@ class NumericKeypad:
 class DirectionalKeypad:
 
     """
-    >>> DirectionalKeypad().print_state()
-        ^ (A)
+    >>> DirectionalKeypad().print(state="^")
+       (^) A
      <  v  >
+    >>> DirectionalKeypad().can_do(state="^", action="A")
+    True
+    >>> DirectionalKeypad().can_do(state="^", action=">")
+    True
+    >>> DirectionalKeypad().can_do(state="^", action="v")
+    True
+    >>> DirectionalKeypad().can_do(state="^", action="<")
+    False
     """
 
     def __init__(self):
-        self.grid = Grid.from_lines("A", [
+        self.grid = Grid.from_lines([
             " ^A",
             "<v>",
         ])
 
-    def print_state(self):
-        self.grid.print()
+    def print(self, state):
+        self.grid.print(state)
 
     def can_do(self, state, action):
-        return action in {
-            "^": "A>v",
-            "A": "A<v",
-            "<": "A>",
-            "v": "A<>^",
-            ">": "A<^",
-        }[state]
+        return self.grid.can_do(state, action)
 
 class Grid:
 
     @classmethod
-    def from_lines(cls, initial_state, lines):
+    def from_lines(cls, lines):
         grid = Grid()
         for y, line in enumerate(lines):
             for x, char in enumerate(line):
                 point = Point(x=x, y=y)
                 if char.strip():
                     grid.add(point=point, char=char)
-                if char == initial_state:
-                    grid.set_state(point)
         return grid
 
     def __init__(self):
         self.states = {}
-        self.state = None
 
-    def print(self):
+    def print(self, state):
+        state_point = self.state_point(state)
         for y in range(0, max(point.y for point in self.states)+1):
             line = []
             for x in range(0, max(point.x for point in self.states)+1):
                 point = Point(x=x, y=y)
                 char = self.states.get(point, " ")
-                if point == self.state:
+                if point == state_point:
                     line.append(f"({char})")
                 else:
                     line.append(f" {char} ")
             print("".join(line).rstrip())
 
-    def set_state(self, point):
-        assert point in self.states
-        self.state = point
+    def can_do(self, state, action):
+        return self.state_point(state).do(action) in self.states
 
     def add(self, point, char):
         self.states[point] = char
 
+    def state_point(self, state):
+        for point in self.states:
+            if self.states[point] == state:
+                return point
+
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
-    def neighbours(self):
-        for dx in [-1, 1]:
-            yield self._replace(x=self.x+dx)
-        for dy in [-1, 1]:
-            yield self._replace(y=self.y+dy)
+    def do(self, action):
+        return {
+            ">": lambda: self.move(dx=1),
+            "<": lambda: self.move(dx=-1),
+            "^": lambda: self.move(dy=-1),
+            "v": lambda: self.move(dy=1),
+            "A": lambda: self,
+        }[action]()
+
+    def move(self, dx=0, dy=0):
+        return self._replace(x=self.x+dx, y=self.y+dy)
 
 if __name__ == "__main__":
     import doctest
