@@ -94,23 +94,16 @@ class RaceTrack:
         return point in self.cheats or point in self.free
 
     def draw(self, context, path):
-        min_x = min(point.x for point in self.walls)
-        max_x = max(point.x for point in self.walls)
-        min_y = min(point.y for point in self.walls)
-        max_y = max(point.y for point in self.walls)
         offset = 3
         size = 5
-        for y in range(min_y-offset, max_y+1+offset):
-            for x in range(min_x-offset, max_x+1+offset):
-                point = Point(x=x, y=y)
-                if point in path:
-                    context.rectangle((x+offset)*size, (y+offset)*size, size, size)
-                    context.set_source_rgb(1, 0, 0)
-                    context.fill()
-                elif point in self.walls:
-                    context.rectangle((x+offset)*size, (y+offset)*size, size, size)
-                    context.set_source_rgb(0, 0, 0)
-                    context.fill()
+        for point in self.walls:
+            context.rectangle((point.x+offset)*size, (point.y+offset)*size, size, size)
+        context.set_source_rgb(0, 0, 0)
+        context.fill()
+        for point in path:
+            context.rectangle((point.x+offset)*size, (point.y+offset)*size, size, size)
+        context.set_source_rgb(1, 0, 0)
+        context.fill()
 
     def count_cheats_that_would_save(self, picoseconds):
         max_score = self.race(allow_cheat=False).score - picoseconds
