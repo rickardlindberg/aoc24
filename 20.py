@@ -1,25 +1,12 @@
 """
 Examples:
 
->>> example = RaceTrackParser().parse_text("\\n".join([
-...     "###############",
-...     "#...#...#.....#",
-...     "#.#.#.#.#.###.#",
-...     "#S#...#.#.#...#",
-...     "#######.#.#.###",
-...     "#######.#.#...#",
-...     "#######.#.###.#",
-...     "###..E#...#...#",
-...     "###.#######.###",
-...     "#...###...#...#",
-...     "#.#####.#.###.#",
-...     "#.#...#.#.#...#",
-...     "#.#.#.#.#.#.###",
-...     "#...#...#...###",
-...     "###############",
-... ]))
->>> race_results = example.race()
->>> race_results.print(maximum_cheat_duration=2, minimum_picoseconds_saved=1)
+>>> race_results = RaceTrackParser().parse_text(example).race()
+
+>>> race_results.print(
+...     maximum_cheat_duration=2,
+...     minimum_picoseconds_saved=1,
+... )
 Best score = 84
 Best cheat score = 20
 Cheats:
@@ -36,7 +23,10 @@ Cheats:
 - 1 save 64 picoseconds
 Total: 44
 
->>> race_results.print(maximum_cheat_duration=20, minimum_picoseconds_saved=50)
+>>> race_results.print(
+...     maximum_cheat_duration=20,
+...     minimum_picoseconds_saved=50,
+... )
 Best score = 84
 Best cheat score = 8
 Cheats:
@@ -59,18 +49,36 @@ Total: 285
 Part 1:
 
 >>> RaceTrackParser().parse().race().count_cheats(
-...     minimum_picoseconds_saved=100,
 ...     maximum_cheat_duration=2,
+...     minimum_picoseconds_saved=100,
 ... )
 1286
 
 Part 2:
 
 >>> RaceTrackParser().parse().race().count_cheats(
-...     minimum_picoseconds_saved=100,
 ...     maximum_cheat_duration=20,
+...     minimum_picoseconds_saved=100,
 ... )
 989316
+"""
+
+example = """\
+###############
+#...#...#.....#
+#.#.#.#.#.###.#
+#S#...#.#.#...#
+#######.#.#.###
+#######.#.#...#
+#######.#.###.#
+###..E#...#...#
+###.#######.###
+#...###...#...#
+#.#####.#.###.#
+#.#...#.#.#...#
+#.#.#.#.#.#.###
+#...#...#...###
+###############
 """
 
 import collections
@@ -102,7 +110,6 @@ class RaceTrack:
     def __init__(self):
         self.walls = set()
         self.free = set()
-        self.cheats = set()
 
     def add_wall(self, point):
         self.walls.add(point)
@@ -119,7 +126,7 @@ class RaceTrack:
         self.add_free(point)
 
     def can_be_at(self, point):
-        return point in self.cheats or point in self.free
+        return point in self.free
 
     def draw(self, context, path):
         offset = 3
@@ -134,42 +141,66 @@ class RaceTrack:
         context.fill()
 
     def race(self):
-        return RaceResults(self.map_costs(), self.start)
+        return RaceResults(self.map_cost_search().run(), self.start)
 
-    def map_costs(self):
-        fringe = set([self.start])
-        costs = {self.start: 0}
-        came_from = {self.start: None}
-        while fringe:
-            point = fringe.pop()
-            if point == self.end:
-                for free in self.free:
-                    assert free in costs
-                costs_to_end = {}
-                cost = 0
-                point = self.end
-                while point is not None:
-                    costs_to_end[point] = cost
-                    point = came_from[point]
-                    cost += 1
-                return costs_to_end
-            for neighbour in point.moves():
-                if self.can_be_at(neighbour):
-                    neighbour_cost = costs[point] + 1
-                    if neighbour not in costs or neighbour_cost < costs[neighbour]:
-                        costs[neighbour] = neighbour_cost
-                        came_from[neighbour] = point
-                        fringe.add(neighbour)
-        raise ValueError("no map cost found")
-
-    def get_search(self, allow_cheat, max_score):
-        return Search(
-            allow_cheat=allow_cheat,
+    def map_cost_search(self):
+        return MapCostSearch(
             start=self.start,
             end=self.end,
-            max_score=max_score,
             race_track=self
         )
+
+class MapCostSearch:
+
+    def __init__(self, start, end, race_track):
+        self.fringe = set([start])
+        self.costs = {start: 0}
+        self.came_from = {start: None}
+        self.end = end
+        self.race_track = race_track
+        self.last_point = None
+
+    def draw(self, context):
+        path = set()
+        point = self.last_point
+        while point in self.came_from:
+            path.add(point)
+            point = self.came_from[point]
+        self.race_track.draw(context, path)
+        context.move_to(10, 10)
+        context.set_source_rgb(0, 0, 0)
+        context.show_text(f"{len(self.fringe)}")
+
+    def run(self):
+        while self.can_step():
+            result = self.step()
+            if result is not None:
+                return result
+        raise ValueError("no map cost found")
+
+    def can_step(self):
+        return self.fringe
+
+    def step(self):
+        self.last_point = point = self.fringe.pop()
+        if point == self.end:
+            for free in self.race_track.free:
+                assert free in self.costs
+            costs_to_end = {}
+            cost = 0
+            point = self.end
+            while point is not None:
+                costs_to_end[point] = cost
+                point = self.came_from[point]
+                cost += 1
+            return costs_to_end
+        for neighbour in point.moves():
+            if self.race_track.can_be_at(neighbour):
+                neighbour_cost = self.costs[point] + 1
+                if neighbour not in self.costs or neighbour_cost < self.costs[neighbour]:
+                    self.costs[neighbour] = neighbour_cost
+                    self.came_from[neighbour] = point
+                    self.fringe.add(neighbour)
 
 class RaceResults:
 
@@ -223,71 +254,6 @@ class CheatScores:
     def count(self):
         return sum(self.scores.values())
 
-class Search:
-
-    def __init__(self, allow_cheat, start, end, max_score, race_track):
-        self.allow_cheat = allow_cheat
-        self.race_track = race_track
-        self.max_score = max_score
-        initial = Program(point=start, cheat1=None, cheat2=None)
-        self.cost = {initial: 0}
-        self.came_from = {initial: None}
-        self.fringe = [initial]
-        self.end = end
-        self.last_program = start
-
-    def draw(self, context):
-        path = set()
-        node = self.last_program
-        while node in self.came_from:
-            path.add(node.point)
-            node = self.came_from[node]
-        self.race_track.draw(context, path)
-        context.move_to(10, 10)
-        context.set_source_rgb(0, 0, 0)
-        context.show_text(f"{len(self.fringe)}")
-
-    def run(self):
-        while self.fringe:
-            value = self.step()
-            if value is not None:
-                yield value
-
-    def step(self):
-        if self.fringe:
-            program = self.fringe.pop(0)
-            self.last_program = program
-            if self.max_score is not None and self.cost[program] > self.max_score:
-                return
-            if program.point == self.end:
-                return program.finish(self.cost[program])
-            else:
-                for next_program in program.moves(self.race_track, self.allow_cheat):
-                    next_program_cost = self.cost[program] + 1
-                    if next_program not in self.cost or next_program_cost < self.cost[program]:
-                        self.cost[next_program] = next_program_cost
-                        self.fringe.append(next_program)
-                        self.came_from[next_program] = program
-
-class Program(collections.namedtuple("Program", ["point", "cheat1", "cheat2"])):
-
-    def finish(self, score):
-        return Finish(score=score, cheat1=self.cheat1, cheat2=self.cheat2)
-
-    def moves(self, race_track, allow_cheat):
-        for point in self.point.moves():
-            if allow_cheat and self.cheat1 is None and not race_track.can_be_at(point):
-                yield self._replace(point=point, cheat1=point)
-            if race_track.can_be_at(point):
-                if self.cheat1 and not self.cheat2:
-                    cheat2 = point
-                else:
-                    cheat2 = self.cheat2
-                yield self._replace(point=point, cheat2=cheat2)
-
-class Finish(collections.namedtuple("Finish", ["score", "cheat1", "cheat2"])):
-    pass
-
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
     def manhattan_to(self, other):
@@ -321,8 +287,9 @@ class Animation:
         context.paint()
         context.set_source_rgb(0, 0, 0)
         self.state.draw(context)
-        self.state.step()
-        widget.queue_draw()
+        if self.state.can_step():
+            self.state.step()
+            widget.queue_draw()
 
 if __name__ == "__main__":
     import sys
@@ -330,10 +297,7 @@ if __name__ == "__main__":
         import gi
         gi.require_version("Gtk", "3.0")
         from gi.repository import Gtk
-        Animation(RaceTrackParser().parse().get_search(
-            allow_cheat=False,
-            max_score=9416
-        )).run()
+        Animation(RaceTrackParser().parse().map_cost_search()).run()
     else:
         import doctest
         doctest.testmod()
