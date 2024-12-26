@@ -22,8 +22,10 @@ Examples:
 84
 >>> example.race(allow_cheat=True)
 20
->>> example.count_cheats_that_would_save(picoseconds=1)
+>>> example.count_cheats_that_would_save(picoseconds=1, cheat_size=2)
 44
+>>> example.count_cheats_that_would_save(picoseconds=50, cheat_size=20)
+285
 
 >>> RaceTrackParser().parse().race(allow_cheat=False)
 9416
@@ -32,8 +34,13 @@ Examples:
 
 Part 1:
 
->>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100)
+>>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100, cheat_size=2)
 1286
+
+Part 2:
+
+#>>> RaceTrackParser().parse().count_cheats_that_would_save(picoseconds=100, cheat_size=20)
+#1286
 """
 
 import collections
@@ -105,15 +112,30 @@ class RaceTrack:
         context.set_source_rgb(1, 0, 0)
         context.fill()
 
-    def count_cheats_that_would_save(self, picoseconds):
+    def count_cheats_that_would_save(self, picoseconds, cheat_size):
         costs_to_end = self.map_costs()
         max_cost = costs_to_end[self.start]
         count = 0
+        cheats = set()
         for point in costs_to_end:
-            for cheat_len, cheat_point in point.get_cheats():
-                if self.can_be_at(cheat_point):
-                    if (costs_to_end[cheat_point]+cheat_len) <= (costs_to_end[point] - picoseconds):
-                        count += 1
+            for cheat_len, start, end in point.get_cheats(cheat_size):
+                if self.can_be_at(end):
+                    cheats.add((cheat_len, start, end))
+        seen = set()
+        saves = {}
+        for cheat_len, start, end in sorted(cheats, key=lambda x: x[0]):
+            if (start, end) in seen:
+                continue
+            seen.add((start, end))
+            save = costs_to_end[start] - (costs_to_end[end]+cheat_len)
+            if save >= picoseconds:
+                if save not in saves:
+                    saves[save] = 1
+                else:
+                    saves[save] += 1
+                count += 1
+        #for save, x in sorted(saves.items(), key=lambda x: x[0]):
+        #    print("save", x, save)
         return count
 
     def map_costs(self):
@@ -234,25 +256,47 @@ class Finish(collections.namedtuple("Finish", ["score", "cheat1", "cheat2"])):
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
-    def get_cheats(self, size=2):
+    def get_cheats(self, max_size=2):
         """
         >>> for x in Point(x=0, y=0).get_cheats(1):
         ...     print(x)
-        (1, Point(x=-1, y=0))
-        (1, Point(x=1, y=0))
-        (1, Point(x=0, y=-1))
-        (1, Point(x=0, y=1))
+        (1, Point(x=0, y=0), Point(x=0, y=-1))
+        (1, Point(x=0, y=0), Point(x=0, y=1))
+        (1, Point(x=0, y=0), Point(x=-1, y=0))
+        (1, Point(x=0, y=0), Point(x=1, y=0))
         """
-        def inner(start, current, size):
-            if size == 0:
-                return set([(start, current)])
-            else:
-                cheats = set()
-                for move in current.moves():
-                    cheats |= inner(start, move, size-1)
-                return cheats
-        for start, current in inner(start=self, current=self, size=size):
-            yield (size, current)
+        #result = set()
+        #look = set([(self, 0)])
+        #while look:
+        #    point, size == look.pop()
+        #    if size > 0:
+        #        result.add((size, point))
+        #    if size <= max_size:
+        #        for point in self.moves():
+        #            look.add((point, moves))
+        #return result
+
+        result = set()
+        explore = set([(self, 0)])
+        while explore:
+            point, size = explore.pop()
+            if size > 0:
+                result.add((size, self, point))
+            if size < max_size:
+                for neighbour in point.moves():
+                    explore.add((neighbour, size+1))
+        return result
+
+        #def inner(start, current, size):
+        #    if size == 0:
+        #        return set([(start, current)])
+        #    else:
+        #        cheats = set()
+        #        for move in current.moves():
+        #            cheats |= inner(start, move, size-1)
+        #        return cheats
+        #for start, current in inner(start=self, current=self, size=max_size):
+        #    yield (max_size, current)
 
     def moves(self):
         for dy in [-1, 1]:
