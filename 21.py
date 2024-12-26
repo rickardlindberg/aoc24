@@ -1,6 +1,6 @@
 """
 >>> CodeParser().parse().complexity()
-1356
+94426
 """
 
 import collections
@@ -45,7 +45,7 @@ class Code:
         return int(self.code.replace("A", ""))
 
     def button_presses(self):
-        return ButtonPressSearch().find_shortest_to(self.code[0])
+        return ButtonPressSearch().find_shortest_to(self.code)
 
 class ButtonPressSearch:
 
@@ -55,8 +55,8 @@ class ButtonPressSearch:
     """
 
     def find_shortest_to(self, numeric):
-        start = ButtonSearchState(robot1="A", robot2="A", numeric="A", out="")
-        end = ButtonSearchState(robot1="A", robot2="A", numeric="A", out=numeric)
+        start = ButtonSearchState(robot1="A", robot2="A", numeric="A", out=numeric)
+        end = ButtonSearchState(robot1="A", robot2="A", numeric="A", out="")
         fringe = [start]
         costs = {start: 0}
         while fringe:
@@ -100,7 +100,8 @@ class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robot1", "
 
     def robot1_action_a(self):
         if self.robot2 == "A":
-            yield self._replace(out=self.numeric)
+            if self.out.startswith(self.numeric):
+                yield self._replace(out=self.out[1:])
         else:
             try:
                 yield self._replace(
