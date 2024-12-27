@@ -73,6 +73,8 @@ class ButtonPressSearch:
         costs = {start: 0}
         while fringe:
             state = fringe.pop(0)
+            if "interactive" in sys.argv[1:]:
+                print(state)
             if state == end:
                 return costs[state]
             for neighbour in state.neighbours():
@@ -257,6 +259,9 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
         return self._replace(x=self.x+dx, y=self.y+dy)
 
 if __name__ == "__main__":
+    import sys
+    if "interactive" in sys.argv[1:]:
+        CodeParser().parse().complexity(number_of_robot_keypads=25)
     import doctest
     doctest.testmod()
     print("OK")
