@@ -67,15 +67,15 @@ class ButtonPressSearch:
     """
 
     def find_shortest_to(self, code, number_of_robot_keypads):
-        start = ButtonSearchState(robot1="A", robot2="A", numeric="A", out=code)
-        end = ButtonSearchState(robot1="A", robot2="A", numeric="A", out="")
+        start = ButtonSearchState(robots="A"*number_of_robot_keypads, numeric="A", out=code)
+        end = ButtonSearchState(robots="A"*number_of_robot_keypads, numeric="A", out="")
         fringe = [start]
         costs = {start: 0}
         while fringe:
             state = fringe.pop(0)
             if state == end:
                 return costs[state]
-            for neighbour in state.neighbours(number_of_robot_keypads):
+            for neighbour in state.neighbours():
                 neighbour_cost = costs[state] + 1
                 if neighbour not in costs or neighbour_cost < costs[neighbour]:
                     costs[neighbour] = neighbour_cost
@@ -83,44 +83,45 @@ class ButtonPressSearch:
             fringe.sort(key=lambda state: costs[state] + state.estimate_left(end))
         raise ValueError("no shortest path found")
 
-class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robot1", "robot2", "numeric", "out"])):
+class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robots", "numeric", "out"])):
 
-    """
-    you -> robot1 -> robot2 -> numeric
-    """
-
-    def neighbours(self, number_of_robot_keypads):
-        for my_action in ["<", ">", "^", "v"]:
+    def neighbours(self):
+        for my_action in ["<", ">", "^", "v", "A"]:
             try:
-                yield self._replace(
-                    robot1=DirectionalKeypad().do(state=self.robot1, action=my_action)
-                )
+                yield self.robot_actions(self.robots, "", my_action)
             except InvalidMove:
                 pass
-        yield from self.my_action_a()
 
-    def my_action_a(self):
-        if self.robot1 == "A":
-            yield from self.robot1_action_a()
+    def robot_actions(self, robot_states, new_robot_states, action):
+        if robot_states:
+            robot_state = robot_states[0]
+            rest_states = robot_states[1:]
+            if action == "A":
+                return self.robot_actions(
+                    robot_states=rest_states,
+                    new_robot_states=new_robot_states+robot_state,
+                    action=robot_state,
+                )
+            else:
+                return self.robot_actions(
+                    robot_states=rest_states,
+                    new_robot_states=new_robot_states+DirectionalKeypad().do(state=robot_state, action=action),
+                    action=None,
+                )
         else:
-            try:
-                yield self._replace(
-                    robot2=DirectionalKeypad().do(state=self.robot2, action=self.robot1)
+            if action == "A":
+                if self.out.startswith(self.numeric):
+                    return self._replace(
+                        robots=new_robot_states,
+                        out=self.out[1:],
+                    )
+                else:
+                    raise InvalidMove()
+            else:
+                return self._replace(
+                    robots=new_robot_states,
+                    numeric=NumericKeypad().do(state=self.numeric, action=action)
                 )
-            except InvalidMove:
-                pass
-
-    def robot1_action_a(self):
-        if self.robot2 == "A":
-            if self.out.startswith(self.numeric):
-                yield self._replace(out=self.out[1:])
-        else:
-            try:
-                yield self._replace(
-                    numeric=NumericKeypad().do(state=self.numeric, action=self.robot2)
-                )
-            except InvalidMove:
-                pass
 
     def estimate_left(self, goal):
         return 1
@@ -222,6 +223,8 @@ class Grid:
             print("".join(line).rstrip())
 
     def do(self, state, action):
+        if action is None:
+            return state
         next_point = self.state_point(state).do(action)
         if next_point in self.states:
             return self.states[next_point]
