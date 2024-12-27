@@ -82,7 +82,7 @@ class ButtonPressSearch:
                 if neighbour not in costs or neighbour_cost < costs[neighbour]:
                     costs[neighbour] = neighbour_cost
                     fringe.append(neighbour)
-            fringe.sort(key=lambda state: costs[state] + state.estimate_left(end))
+            fringe.sort(key=lambda state: costs[state] + state.estimate_left())
         raise ValueError("no shortest path found")
 
 class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robots", "numeric", "out"])):
@@ -107,7 +107,7 @@ class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robots", "
             else:
                 return self.robot_actions(
                     robot_states=rest_states,
-                    new_robot_states=new_robot_states+DirectionalKeypad().do(state=robot_state, action=action),
+                    new_robot_states=new_robot_states+DIRECTIONAL.do(state=robot_state, action=action),
                     action=None,
                 )
         else:
@@ -122,11 +122,18 @@ class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robots", "
             else:
                 return self._replace(
                     robots=new_robot_states,
-                    numeric=NumericKeypad().do(state=self.numeric, action=action)
+                    numeric=NUMERIC.do(state=self.numeric, action=action)
                 )
 
-    def estimate_left(self, goal):
-        return 1
+    def estimate_left(self):
+        if self.out == "":
+            return 0
+        else:
+            first_best_action = NUMERIC.find_first_shortest_action(
+                start=self.numeric,
+                end=self.out[0]
+            )
+            return 1
 
 class NumericKeypad:
 
@@ -150,6 +157,11 @@ class NumericKeypad:
     Traceback (most recent call last):
       ...
     InvalidMove: can't do v in A
+
+    >>> NumericKeypad().find_first_shortest_action(start="8", end="0")
+    'v'
+    >>> NumericKeypad().find_first_shortest_action(start="1", end="2")
+    '>'
     """
 
     def __init__(self):
@@ -159,6 +171,9 @@ class NumericKeypad:
             "123",
             " 0A",
         ])
+
+    def find_first_shortest_action(self, start, end):
+        return self.grid.find_first_shortest_action(start, end)
 
     def print(self, state):
         self.grid.print(state)
@@ -182,6 +197,11 @@ class DirectionalKeypad:
     Traceback (most recent call last):
       ...
     InvalidMove: can't do < in ^
+
+    >>> DirectionalKeypad().find_first_shortest_action(start="^", end="^")
+    'A'
+    >>> DirectionalKeypad().find_first_shortest_action(start="^", end="v")
+    'v'
     """
 
     def __init__(self):
@@ -189,6 +209,9 @@ class DirectionalKeypad:
             " ^A",
             "<v>",
         ])
+
+    def find_first_shortest_action(self, start, end):
+        return self.grid.find_first_shortest_action(start, end)
 
     def print(self, state):
         self.grid.print(state)
@@ -210,6 +233,33 @@ class Grid:
 
     def __init__(self):
         self.states = {}
+        self.cache = {}
+
+    def find_first_shortest_action(self, start, end):
+        def do():
+            if start == end:
+                return "A"
+            fringe = [start]
+            came_from = {start: (None, None)}
+            while fringe:
+                state = fringe.pop(0)
+                if state == end:
+                    while came_from[state][0] is not None:
+                        state, action = came_from[state]
+                    return action
+                else:
+                    for action in "<>^v":
+                        neighbour = self.state_point(state).do(action)
+                        if neighbour in self.states:
+                            neighbour_state = self.states[neighbour]
+                            if neighbour_state not in came_from:
+                                came_from[neighbour_state] = (state, action)
+                                fringe.append(neighbour_state)
+            raise ValueError(f"Found not path from {start!r} to {end!r}.")
+        cache_key = (start, end)
+        if cache_key not in self.cache:
+            self.cache[cache_key] = do()
+        return self.cache[cache_key]
 
     def print(self, state):
         state_point = self.state_point(state)
@@ -257,6 +307,9 @@ class Point(collections.namedtuple("Point", ["x", "y"])):
 
     def move(self, dx=0, dy=0):
         return self._replace(x=self.x+dx, y=self.y+dy)
+
+NUMERIC = NumericKeypad()
+DIRECTIONAL = DirectionalKeypad()
 
 if __name__ == "__main__":
     import sys
