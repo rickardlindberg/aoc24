@@ -129,11 +129,20 @@ class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robots", "
         if self.out == "":
             return 0
         else:
+            min_distance = 0
+            min_distance += len(self.out)
+            min_distance += NUMERIC.distance(self.numeric, self.out[0])
             first_best_action = NUMERIC.find_first_shortest_action(
                 start=self.numeric,
-                end=self.out[0]
+                end=self.out[0],
             )
-            return 1
+            for x in reversed(self.robots):
+                min_distance += DIRECTIONAL.distance(x, first_best_action)
+                first_best_action = DIRECTIONAL.find_first_shortest_action(
+                    start=x,
+                    end=first_best_action,
+                )
+            return min_distance
 
 class NumericKeypad:
 
@@ -172,6 +181,9 @@ class NumericKeypad:
             " 0A",
         ])
 
+    def distance(self, start, end):
+        return self.grid.state_point(start).distance_to(self.grid.state_point(end))
+
     def find_first_shortest_action(self, start, end):
         return self.grid.find_first_shortest_action(start, end)
 
@@ -209,6 +221,9 @@ class DirectionalKeypad:
             " ^A",
             "<v>",
         ])
+
+    def distance(self, start, end):
+        return self.grid.state_point(start).distance_to(self.grid.state_point(end))
 
     def find_first_shortest_action(self, start, end):
         return self.grid.find_first_shortest_action(start, end)
@@ -296,6 +311,9 @@ class InvalidMove(Exception):
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
 
+    def distance_to(self, other):
+        return abs(self.x-other.x) + abs(self.y+other.y)
+
     def do(self, action):
         return {
             ">": lambda: self.move(dx=1),
@@ -314,7 +332,7 @@ DIRECTIONAL = DirectionalKeypad()
 if __name__ == "__main__":
     import sys
     if "interactive" in sys.argv[1:]:
-        CodeParser().parse().complexity(number_of_robot_keypads=25)
+        print(CodeParser().parse().complexity(number_of_robot_keypads=25))
     import doctest
     doctest.testmod()
     print("OK")
