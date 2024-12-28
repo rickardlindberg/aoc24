@@ -1,4 +1,11 @@
 """
+The problem text was tricky to parse. I needed many examples in my code to
+verify that I understood the problem correctly. Otherwise the solution was
+quite straight forward for me.
+
+My solution runs rather slow though. Around 13 seconds. I wonder if it can be
+optimized?
+
 Examples:
 
 >>> secret_numbers = SecretNumbers()
@@ -6,7 +13,7 @@ Examples:
 >>> secret_numbers.add(SecretNumber(10))
 >>> secret_numbers.add(SecretNumber(100))
 >>> secret_numbers.add(SecretNumber(2024))
->>> secret_numbers.sum_2000()
+>>> secret_numbers.sum_advanced()
 37327623
 
 >>> secret_numbers = SecretNumbers()
@@ -14,14 +21,14 @@ Examples:
 >>> secret_numbers.add(SecretNumber(2))
 >>> secret_numbers.add(SecretNumber(3))
 >>> secret_numbers.add(SecretNumber(2024))
->>> secret_numbers.sum_2000()
+>>> secret_numbers.sum_advanced()
 37990510
 >>> secret_numbers.max_bananas()
 ((-2, 1, -1, 3), 23)
 
 Part 1:
 
->>> NumberParser().parse().sum_2000()
+>>> NumberParser().parse().sum_advanced()
 16999668565
 
 Part 2:
@@ -52,18 +59,18 @@ class SecretNumbers:
     def add(self, secret_number):
         self.secret_numbers.append(secret_number)
 
-    def sum_2000(self):
+    def sum_advanced(self):
         return sum(
-            secret_number.simulate_2000().as_integer()
+            secret_number.advance().as_integer()
             for secret_number in self.secret_numbers
         )
 
     def max_bananas(self):
-        banana_count_for_sequence = {}
+        banana_counts = {}
         for secret_number in self.secret_numbers:
             for sequence in secret_number.unique_sequences():
-                sequence.add_price(banana_count_for_sequence)
-        return max(banana_count_for_sequence.items(), key=lambda x: x[1])
+                sequence.add_price(banana_counts)
+        return max(banana_counts.items(), key=lambda x: x[1])
 
 class SecretNumber:
 
@@ -71,12 +78,12 @@ class SecretNumber:
         self.number = number
         self.previous_secret_number = previous_secret_number
 
-    def simulate_2000(self):
+    def advance(self, iterations=2000):
         """
-        >>> SecretNumber(1).simulate_2000().as_integer()
+        >>> SecretNumber(1).advance().as_integer()
         8685429
         """
-        for secret_number in self.simulate(2000):
+        for secret_number in self.simulate(iterations):
             pass
         return secret_number
 
@@ -156,11 +163,11 @@ class SecretNumber:
 
 class Sequence(collections.namedtuple("Sequence", ["sequence", "price"])):
 
-    def add_price(self, banana_count_for_sequence):
-        if self.sequence not in banana_count_for_sequence:
-            banana_count_for_sequence[self.sequence] = self.price
+    def add_price(self, banana_counts):
+        if self.sequence not in banana_counts:
+            banana_counts[self.sequence] = self.price
         else:
-            banana_count_for_sequence[self.sequence] += self.price
+            banana_counts[self.sequence] += self.price
 
 if __name__ == "__main__":
     import doctest
