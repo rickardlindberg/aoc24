@@ -31,7 +31,6 @@ Part 2:
 """
 
 import collections
-import operator
 
 class NumberParser:
 
@@ -116,15 +115,14 @@ class SecretNumber:
         previous = self
         number = self.number
         for _ in range(iterations):
-            number = self.mix_and_prune(number, number*64)
-            number = self.mix_and_prune(number, number//32)
-            number = self.mix_and_prune(number, number*2048)
+            number = self.prune(number ^ (number << 6))
+            number = self.prune(number ^ (number >> 5))
+            number = self.prune(number ^ (number << 11))
             secret_number = SecretNumber(number, previous)
             yield secret_number
             previous = secret_number
 
-    def mix_and_prune(self, a, b):
-        number = operator.xor(a, b)
+    def prune(self, number):
         if number == 100000000:
             return 16113920
         else:
