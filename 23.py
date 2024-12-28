@@ -3,6 +3,10 @@ Part 1:
 
 >>> NetworkMapParser().parse().count_connections(size=3)
 1284
+
+Part 2:
+
+>>> NetworkMapParser().parse().largest_connection()
 """
 
 example = """\
@@ -84,14 +88,26 @@ class NetworkMap:
                 count += 1
         return count
 
+    def largest_connection(self):
+        for size in reversed(range(len(self.computers)+1)):
+            print(f"Checking size {size}")
+            for computers in self.all_sets_of(size):
+                if computers.all_connected(self):
+                    return computers
+        raise ValueError("none found")
+
     def all_sets_of(self, size):
         """
         >>> network_map = NetworkMap()
         >>> network_map.add("a", "b")
         >>> network_map.add("b", "c")
         >>> network_map.add("c", "d")
-        >>> list(network_map.all_sets_of(3))
-        [Computers(a, b, c), Computers(a, b, d), Computers(a, c, d), Computers(b, c, d)]
+        >>> for x in network_map.all_sets_of(3):
+        ...     print(x)
+        a,b,c
+        a,b,d
+        a,c,d
+        b,c,d
         """
         for names in itertools.combinations(self.computers, size):
             yield Computers(names)
@@ -129,12 +145,13 @@ class Computers:
         return False
 
     def __repr__(self):
-        return f"Computers({', '.join(self.names)})"
+        return ",".join(sorted(self.names))
 
 if __name__ == "__main__":
     import sys
     if "interactive" in sys.argv[1:]:
-        NetworkMapParser().parse_text(example).visualize()
+        #NetworkMapParser().parse_text(example).visualize()
+        print(NetworkMapParser().parse().largest_connection())
     else:
         import doctest
         doctest.testmod()
