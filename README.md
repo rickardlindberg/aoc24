@@ -3,11 +3,11 @@
 ## How I do the puzzles
 
 * I try to solve the puzzles in order. (This year, it worked until day 21, part
-  2. I got stuck on it and decided it would be more fun to continues without it
+  2. I got stuck on it and decided it would be more fun to continue without it
   solved.)
 
 * I don't look at others' solutions for a puzzle until I have solved both
-  parts.
+  parts. I do however look up algorithms that I think are needed.
 
 * When I have solved both parts, I look at others' solutions if I'm curious.
 
@@ -40,15 +40,43 @@ The first 6 days are run like this:
 
     python {day}.py < {day}.txt
 
-After that I decided it was more convenient if the program read the file
-itself, so only the following is needed:
+After that I decided it was more convenient if programs read the input file
+themselves, so only the following is needed:
 
     python {day}.py
 
-Some days (16, 20, 21) have and interactive mode that either shows an animation
+Some days (16, 20, 21) have an interactive mode that either shows an animation
 or runs some code that prints to the terminal. Those are invoked like this:
 
     python {day}.py interactive
+
+I gravitated towards a style looking something like this:
+
+    """
+    Part 1:
+
+    >>> ...
+    <solution 1>
+
+    Part 2:
+
+    >>> ...
+    <solution 2>
+    """
+
+    <code here>
+
+    if __name__ == "__main__":
+        import sys
+        if "interactive" in sys.argv[1:]:
+            ...
+        else:
+            import doctest
+            doctest.testmod()
+            print("OK")
+
+So on success, it will only print OK, and the actual answers are found in the
+[doctest](https://docs.python.org/3/library/doctest.html).
 
 ## Notes
 
