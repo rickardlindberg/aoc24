@@ -29,7 +29,7 @@ class Antennas:
 
     @classmethod
     def read(cls):
-        with open("8.txt") as f:
+        with open("08.txt") as f:
             return cls.read_contents(f.read())
 
     @classmethod
@@ -56,33 +56,34 @@ class Antennas:
         antinode_points = set()
         for char, points in self.types.items():
             for a, b in itertools.combinations(points, 2):
-                for antinode_point in a.get_antinotes(b):
-                    if antinode_point in self.all:
-                        antinode_points.add(antinode_point)
+                for antinode_point in a.get_antinotes(b, self):
+                    antinode_points.add(antinode_point)
         return len(antinode_points)
+
+    def is_valid(self, point):
+        return point in self.all
 
 
 class Point(collections.namedtuple("Point", ["x", "y"])):
-    """
-    >>> Point(0, 0).get_antinotes(Point(2, 2))
-    [Point(x=-2, y=-2), Point(x=4, y=4)]
-    """
 
-    def get_antinotes(self, other):
+    def get_antinotes(self, other, antennas):
         x_diff = self.x - other.x
         y_diff = self.y - other.y
-        return [
-            self.move(dx=x_diff, dy=y_diff),
-            other.move(dx=-x_diff, dy=-y_diff),
-        ]
+        antinodes = []
+        left = self
+        while antennas.is_valid(left):
+            antinodes.append(left)
+            left = left.move(dx=x_diff, dy=y_diff)
+        right = other
+        while antennas.is_valid(right):
+            antinodes.append(right)
+            right = right.move(dx=-x_diff, dy=-y_diff)
+        return antinodes
 
     def move(self, dx, dy):
         return Point(x=self.x + dx, y=self.y + dy)
 
 
 doctest.testmod()
-example = Antennas.read_contents(EXAMPLE)
-print(example.types)
-print(example.count_unique_antinodes())
-# 2500 too high
-assert Antennas.read().count_unique_antinodes() == 259
+print(Antennas.read_contents(EXAMPLE).count_unique_antinodes())
+print(Antennas.read().count_unique_antinodes())

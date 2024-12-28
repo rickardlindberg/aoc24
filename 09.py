@@ -6,22 +6,28 @@ class DiskMap:
     @classmethod
     def load(cls):
         """
-        >>> print(str(DiskMap.load().blocks())[:40])
-        0000........1111111.....2222222........3
+        >>> print(str(DiskMap.load().blocks())[:20])
+        0000........1111111.
         """
-        with open("9.txt") as f:
+        with open("09.txt") as f:
             return cls.load_text(f.read().rstrip())
 
     @classmethod
     def load_text(cls, text):
         """
+        >>> DiskMap.load_text("12345").blocks()
+        0..111....22222
+
+        >>> DiskMap.load_text("12345").blocks().compact()
+        022111222......
+
         >>> example = DiskMap.load_text("2333133121414131402")
         >>> example.blocks()
         00...111...2...333.44.5555.6666.777.888899
         >>> example.blocks().compact()
-        00992111777.44.333....5555.6666.....8888..
+        0099811188827773336446555566..............
         >>> example.blocks().compact().checksum()
-        2858
+        1928
         """
         disk_map = cls()
         for char in text.rstrip():
@@ -54,7 +60,6 @@ class Blocks:
 
     def __init__(self):
         self.blocks = []
-        self.files = {}
         self.current_id = 0
 
     def add_space(self, size):
@@ -62,40 +67,28 @@ class Blocks:
             self.blocks.append(Cell(file_id=None))
 
     def add_file(self, size):
-        self.files[len(self.blocks)] = size
         for _ in range(size):
             self.blocks.append(Cell(file_id=self.current_id))
         self.current_id += 1
 
     def compact(self):
-        for file_index, file_size in reversed(self.files.items()):
-            space_index = self.find_space(index=file_index, size=file_size)
-            if space_index is not None:
-                for offset in range(file_size):
-                    self.blocks[space_index + offset].swap(
-                        self.blocks[file_index + offset]
-                    )
+        free_index = 0
+        take_index = len(self.blocks) - 1
+        while free_index < take_index:
+            if self.blocks[free_index].is_file():
+                free_index += 1
+            elif self.blocks[take_index].is_space():
+                take_index -= 1
+            else:
+                self.blocks[free_index].swap(self.blocks[take_index])
         return self
-
-    def find_space(self, index, size):
-        """
-        ...11..
-        """
-        for space_index in range(index - size + 1):
-            if self.is_enough_space(space_index, size):
-                return space_index
-
-    def is_enough_space(self, index, size):
-        for offset in range(size):
-            if not self.blocks[index + offset].is_space():
-                return False
-        return True
 
     def checksum(self):
         checksum = 0
-        for index, block in enumerate(self.blocks):
-            if block.is_file():
-                checksum += block.checksum(index)
+        index = 0
+        while self.blocks[index].is_file():
+            checksum += self.blocks[index].checksum(index)
+            index += 1
         return checksum
 
     def __repr__(self):
@@ -124,16 +117,12 @@ class Cell:
     def __repr__(self):
         if self.file_id is None:
             return "."
-        elif len(str(self.file_id)) == 1:
-            return str(self.file_id)
         else:
-            return f"({self.file_id})"
+            return str(self.file_id)
 
 
 doctest.testmod()
-print(DiskMap.load().blocks().compact().checksum())
+assert DiskMap.load().blocks().compact().checksum() == 6432869891895
 print("OK")
 
-# 8664287909542 too high
-# 6467290913294 too high
-# 6467290479134
+# 55255358601 too low (had wrong input)

@@ -6,7 +6,7 @@ class Equations:
     @classmethod
     def read(cls):
         equations = cls()
-        with open("7.txt") as f:
+        with open("07.txt") as f:
             for line in f:
                 test_value, numbers = line.split(": ")
                 equations.add(int(test_value), [int(x) for x in numbers.split(" ")])
@@ -55,6 +55,8 @@ class Solver:
             return False
         elif self.mult().solution_exists():
             return True
+        elif self.concat().solution_exists():
+            return True
         else:
             return self.add().solution_exists()
 
@@ -64,6 +66,9 @@ class Solver:
     def add(self):
         return self.operator(lambda a, b: a + b)
 
+    def concat(self):
+        return self.operator(lambda a, b: int(str(a) + str(b)))
+
     def operator(self, fn):
         return Solver(
             test_value=self.test_value,
@@ -72,4 +77,4 @@ class Solver:
         )
 
 
-assert Equations.read().calibration_result() == 2299996598890
+print(Equations.read().calibration_result())

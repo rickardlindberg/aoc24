@@ -44,7 +44,7 @@ class Rules:
         return sum(1 + self.count_before(x, visited) for x in befores)
 
     def to_graph(self):
-        with open("5.dot", "w") as f:
+        with open("05.dot", "w") as f:
             f.write("digraph rules {\n")
             for rule in self.rules:
                 f.write(f"  r{rule.a} -> r{rule.b};\n")
