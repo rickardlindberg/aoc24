@@ -35,20 +35,29 @@ class SecretNumbers:
 
 class SecretNumber:
 
-    def __init__(self, number):
+    def __init__(self, number, previous_secret_number=None):
         self.number = number
+        self.previous_secret_number = previous_secret_number
 
     def simulate_2000(self):
         """
         >>> SecretNumber(1).simulate_2000()
         8685429
         """
+        for secret_number in self.simulate(2000):
+            pass
+        return secret_number
+
+    def simulate(self, iterations):
+        previous = self
         number = self.number
-        for i in range(2000):
+        for _ in range(iterations):
             number = self.mix_and_prune(number, number*64)
             number = self.mix_and_prune(number, number//32)
             number = self.mix_and_prune(number, number*2048)
-        return SecretNumber(number)
+            secret_number = SecretNumber(number, previous)
+            yield secret_number
+            previous = secret_number
 
     def mix_and_prune(self, a, b):
         number = operator.xor(a, b)
@@ -56,6 +65,16 @@ class SecretNumber:
             return 16113920
         else:
             return number % 16777216
+
+    def price(self):
+        """
+        >>> SecretNumber(123).price()
+        3
+
+        >>> SecretNumber(15887950).price()
+        0
+        """
+        return self.number % 10
 
     def as_integer(self):
         return self.number
