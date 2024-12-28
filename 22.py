@@ -60,12 +60,11 @@ class SecretNumbers:
         )
 
     def max_bananas(self):
-        prices_for_sequence = {}
+        banana_count_for_sequence = {}
         for secret_number in self.secret_numbers:
-            seen = set()
-            for sequence in secret_number.sequences():
-                sequence.add_price(seen, prices_for_sequence)
-        return max(prices_for_sequence.items(), key=lambda x: x[1])
+            for sequence in secret_number.unique_sequences():
+                sequence.add_price(banana_count_for_sequence)
+        return max(banana_count_for_sequence.items(), key=lambda x: x[1])
 
 class SecretNumber:
 
@@ -82,7 +81,7 @@ class SecretNumber:
             pass
         return secret_number
 
-    def sequences(self, iterations=2000):
+    def unique_sequences(self, iterations=2000):
         """
         >>> for x in SecretNumber(123).simulate(9):
         ...     print(x)
@@ -96,17 +95,21 @@ class SecretNumber:
         12249484: 4 (0)
         7753432: 2 (-2)
 
-        >>> for sequence in SecretNumber(123).sequences(6):
+        >>> for sequence in SecretNumber(123).unique_sequences(6):
         ...     print(sequence)
         Sequence(sequence=(-3, 6, -1, -1), price=4)
         Sequence(sequence=(6, -1, -1, 0), price=4)
         Sequence(sequence=(-1, -1, 0, 2), price=6)
         """
+        seen = set()
         diffs = []
         for secret_number in self.simulate(iterations):
             diffs.append(secret_number.price_diff())
             if len(diffs) == 4:
-                yield Sequence(tuple(diffs), secret_number.price())
+                diff_set = tuple(diffs)
+                if diff_set not in seen:
+                    seen.add(diff_set)
+                    yield Sequence(diff_set, secret_number.price())
                 diffs.pop(0)
 
     def simulate(self, iterations):
@@ -155,13 +158,11 @@ class SecretNumber:
 
 class Sequence(collections.namedtuple("Sequence", ["sequence", "price"])):
 
-    def add_price(self, seen, prices_for_sequence):
-        if self.sequence not in seen:
-            seen.add(self.sequence)
-            if self.sequence not in prices_for_sequence:
-                prices_for_sequence[self.sequence] = self.price
-            else:
-                prices_for_sequence[self.sequence] += self.price
+    def add_price(self, banana_count_for_sequence):
+        if self.sequence not in banana_count_for_sequence:
+            banana_count_for_sequence[self.sequence] = self.price
+        else:
+            banana_count_for_sequence[self.sequence] += self.price
 
 if __name__ == "__main__":
     import doctest
