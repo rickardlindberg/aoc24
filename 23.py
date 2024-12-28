@@ -1,5 +1,7 @@
 """
->>> NetworkMapParser().parse().find_3connections()
+Part 1:
+
+>>> NetworkMapParser().parse().count_connections(size=3)
 1284
 """
 
@@ -75,23 +77,23 @@ class NetworkMap:
     def are_connected(self, a, b):
         return b in self.connections.get(a, [])
 
-    def find_3connections(self):
+    def count_connections(self, size):
         count = 0
-        for computers in self.all_sets_of_three():
+        for computers in self.all_sets_of(size):
             if computers.all_connected(self) and computers.one_with_t():
                 count += 1
         return count
 
-    def all_sets_of_three(self):
+    def all_sets_of(self, size):
         """
         >>> network_map = NetworkMap()
         >>> network_map.add("a", "b")
         >>> network_map.add("b", "c")
         >>> network_map.add("c", "d")
-        >>> list(network_map.all_sets_of_three())
+        >>> list(network_map.all_sets_of(3))
         [Computers(a, b, c), Computers(a, b, d), Computers(a, c, d), Computers(b, c, d)]
         """
-        for names in itertools.combinations(self.computers, 3):
+        for names in itertools.combinations(self.computers, size):
             yield Computers(names)
 
     def visualize(self):
