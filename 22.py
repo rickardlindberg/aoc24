@@ -16,6 +16,8 @@ Examples:
 >>> secret_numbers.add(SecretNumber(2024))
 >>> secret_numbers.sum_2000()
 37990510
+>>> secret_numbers.max_bananas()
+((-2, 1, -1, 3), 23)
 
 Part 1:
 
@@ -23,6 +25,9 @@ Part 1:
 16999668565
 
 Part 2:
+
+>>> NumberParser().parse().max_bananas()
+((0, 0, 1, 2), 1898)
 """
 
 import collections
@@ -53,6 +58,14 @@ class SecretNumbers:
             secret_number.simulate_2000().as_integer()
             for secret_number in self.secret_numbers
         )
+
+    def max_bananas(self):
+        prices_for_sequence = {}
+        for secret_number in self.secret_numbers:
+            seen = set()
+            for sequence in secret_number.sequences():
+                sequence.add_price(seen, prices_for_sequence)
+        return max(prices_for_sequence.items(), key=lambda x: x[1])
 
 class SecretNumber:
 
@@ -141,7 +154,14 @@ class SecretNumber:
         return f"{self.number}: {self.price()} ({self.price_diff()})"
 
 class Sequence(collections.namedtuple("Sequence", ["sequence", "price"])):
-    pass
+
+    def add_price(self, seen, prices_for_sequence):
+        if self.sequence not in seen:
+            seen.add(self.sequence)
+            if self.sequence not in prices_for_sequence:
+                prices_for_sequence[self.sequence] = self.price
+            else:
+                prices_for_sequence[self.sequence] += self.price
 
 if __name__ == "__main__":
     import doctest
