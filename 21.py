@@ -71,10 +71,13 @@ class ButtonPressSearch:
         end = ButtonSearchState(robots="A"*number_of_robot_keypads, numeric="A", out="")
         fringe = [start]
         costs = {start: 0}
+        iteration = 0
         while fringe:
+            iteration += 1
             state = fringe.pop(0)
             if "interactive" in sys.argv[1:]:
-                print(state)
+                if iteration % 1000 == 0:
+                    print(f"{state} | iteration {iteration//1000}k | fringe {len(fringe)} | cost {len(costs)}")
             if state == end:
                 return costs[state]
             for neighbour in state.neighbours():
@@ -129,6 +132,20 @@ class ButtonSearchState(collections.namedtuple("ButtonSearchState", ["robots", "
         if self.out == "":
             return 0
         else:
+            # Assuming one number left, all robots need to move to align, then
+            # press A.
+            total = 0
+            for robot in self.robots:
+                total += DIRECTIONAL.distance(robot, "A")
+            total += NUMERIC.distance(self.numeric, self.out[0])
+            total += 1
+            return total
+
+            # Assuming that all the other robots are aligned correctly, we need
+            # to move to A, then press A, then we are done.
+            return DIRECTIONAL.distance(self.robots[0], "A") + 1
+
+            # OLD
             min_distance = 0
             min_distance += len(self.out)
             min_distance += NUMERIC.distance(self.numeric, self.out[0])
@@ -333,6 +350,7 @@ if __name__ == "__main__":
     import sys
     if "interactive" in sys.argv[1:]:
         print(CodeParser().parse().complexity(number_of_robot_keypads=25))
-    import doctest
-    doctest.testmod()
-    print("OK")
+    else:
+        import doctest
+        doctest.testmod()
+        print("OK")
