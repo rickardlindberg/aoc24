@@ -1,5 +1,6 @@
 """
 >>> GateParser().parse().simulate()
+45121475050728
 """
 
 class GateParser:
@@ -48,12 +49,15 @@ class Circut:
     def simulate(self):
         for wire in list(self.wires.keys()):
             self.trigger(wire)
+        return self.collect_output()
+
+    def collect_output(self):
         number = 0
         for wire in sorted(self.wires):
             if wire.startswith("z"):
                 shift = int(wire[1:])
                 number |= (self.wires[wire] << shift)
-        print(number)
+        return number
 
     def trigger(self, wire):
         for gate in self.gate_triggers.get(wire, []):
