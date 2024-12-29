@@ -1,12 +1,12 @@
 """
 Part 1:
 
->>> NetworkMapParser().parse().count_connections(size=3)
+>>> NetworkMapParser().parse().find_lan_parties(size=3).count_t()
 1284
 
 Part 2:
 
->>> NetworkMapParser().parse().largest_connection()
+>>> NetworkMapParser().parse().find_lan_parties().largest()
 bv,cm,dk,em,gs,jv,ml,oy,qj,ri,uo,xk,yw
 """
 
@@ -82,42 +82,24 @@ class NetworkMap:
     def are_connected(self, a, b):
         return b in self.connections.get(a, [])
 
-    def count_connections(self, size):
-        count = 0
-        for computers in self.all_sets_of(size):
-            if computers.all_connected(self) and computers.one_with_t():
-                count += 1
-        return count
-
-    def largest_connection(self):
-        connected = []
+    def find_lan_parties(self, size=None):
+        lan_parties = LanParties()
         examined = set()
         for computer in self.computers:
-            others = self.connections[computer]
-            for count in range(1, len(others)+1):
-                for sub_others in itertools.combinations(others, count):
+            connections = self.connections[computer]
+            if size is None:
+                sizes = range(0, len(connections)+1)
+            else:
+                sizes = [size-1]
+            for count in sizes:
+                for sub_others in itertools.combinations(connections, count):
                     computers = Computers((computer,)+sub_others)
                     if computers.key() not in examined:
                         examined.add(computers.key())
                         if computers.all_connected(self):
-                            connected.append(computers)
-        return max(connected, key=lambda computers: computers.size())
+                            lan_parties.add(computers)
+        return lan_parties
 
-    def all_sets_of(self, size):
-        """
-        >>> network_map = NetworkMap()
-        >>> network_map.add("a", "b")
-        >>> network_map.add("b", "c")
-        >>> network_map.add("c", "d")
-        >>> for x in network_map.all_sets_of(3):
-        ...     print(x)
-        a,b,c
-        a,b,d
-        a,c,d
-        b,c,d
-        """
-        for names in itertools.combinations(self.computers, size):
-            yield Computers(names)
 
     def visualize(self):
         with open("23.dot", "w") as f:
@@ -133,6 +115,24 @@ class NetworkMap:
                 parts.append(f"{a} -> {item};")
         parts.append("}")
         return "\n".join(parts)
+
+class LanParties:
+
+    def __init__(self):
+        self.parties = []
+
+    def add(self, computers):
+        self.parties.append(computers)
+
+    def count_t(self):
+        count = 0
+        for computers in self.parties:
+            if computers.one_with_t():
+                count += 1
+        return count
+
+    def largest(self):
+        return max(self.parties, key=lambda computers: computers.size())
 
 class Computers:
 
@@ -163,8 +163,7 @@ class Computers:
 if __name__ == "__main__":
     import sys
     if "interactive" in sys.argv[1:]:
-        #NetworkMapParser().parse_text(example).visualize()
-        print(NetworkMapParser().parse().largest_connection())
+        NetworkMapParser().parse_text(example).visualize()
     else:
         import doctest
         doctest.testmod()
