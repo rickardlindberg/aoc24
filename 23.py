@@ -140,10 +140,10 @@ class Computers:
         self.names = names
 
     def all_connected(self, network):
-        return all(
-            network.are_connected(a, b)
-            for (a, b) in itertools.combinations(self.names, 2)
-        )
+        for (a, b) in itertools.combinations(self.names, 2):
+            if not network.are_connected(a, b):
+                return False
+        return True
 
     def one_with_t(self):
         for name in self.names:
