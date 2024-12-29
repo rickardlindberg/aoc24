@@ -85,3 +85,4 @@ So on success, it will only print OK, and the actual answers are found in the
 * Redo 9 part 2 (solution took long and was not very nice)
 * Write 23 with some kind of lazy LanParties so that the query optimization is
   hidden from the user. (Part 2 `...parse().find_lan_parties().largest()`)
+  (Learned about graph theory. Largest clique problem.)
