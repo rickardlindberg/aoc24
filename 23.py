@@ -7,6 +7,7 @@ Part 1:
 Part 2:
 
 >>> NetworkMapParser().parse().largest_connection()
+bv,cm,dk,em,gs,jv,ml,oy,qj,ri,uo,xk,yw
 """
 
 example = """\
@@ -89,12 +90,18 @@ class NetworkMap:
         return count
 
     def largest_connection(self):
-        for size in reversed(range(len(self.computers)+1)):
-            print(f"Checking size {size}")
-            for computers in self.all_sets_of(size):
-                if computers.all_connected(self):
-                    return computers
-        raise ValueError("none found")
+        connected = []
+        examined = set()
+        for computer in self.computers:
+            others = self.connections[computer]
+            for count in range(1, len(others)+1):
+                for sub_others in itertools.combinations(others, count):
+                    computers = Computers((computer,)+sub_others)
+                    if computers.key() not in examined:
+                        examined.add(computers.key())
+                        if computers.all_connected(self):
+                            connected.append(computers)
+        return max(connected, key=lambda computers: computers.size())
 
     def all_sets_of(self, size):
         """
@@ -143,6 +150,12 @@ class Computers:
             if name.startswith("t"):
                 return True
         return False
+
+    def size(self):
+        return len(self.names)
+
+    def key(self):
+        return tuple(sorted(self.names))
 
     def __repr__(self):
         return ",".join(sorted(self.names))
