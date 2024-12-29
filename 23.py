@@ -6,7 +6,7 @@ Part 1:
 
 Part 2:
 
->>> NetworkMapParser().parse().find_lan_parties().largest()
+>>> NetworkMapParser().parse().find_largest_lan_party()
 bv,cm,dk,em,gs,jv,ml,oy,qj,ri,uo,xk,yw
 """
 
@@ -82,24 +82,28 @@ class NetworkMap:
     def are_connected(self, a, b):
         return b in self.connections.get(a, [])
 
-    def find_lan_parties(self, size=None):
+    def find_largest_lan_party(self):
+        largest = None
+        for computer in self.computers:
+            for count in reversed(range(0, len(self.connections[computer])+1)):
+                if largest is None or largest.size() < (count+1):
+                    for sub_others in itertools.combinations(self.connections[computer], count):
+                        computers = Computers((computer,)+sub_others)
+                        if computers.all_connected(self):
+                            largest = computers
+        return largest
+
+    def find_lan_parties(self, size):
         lan_parties = LanParties()
         examined = set()
         for computer in self.computers:
-            connections = self.connections[computer]
-            if size is None:
-                sizes = range(0, len(connections)+1)
-            else:
-                sizes = [size-1]
-            for count in sizes:
-                for sub_others in itertools.combinations(connections, count):
-                    computers = Computers((computer,)+sub_others)
-                    if computers.key() not in examined:
-                        examined.add(computers.key())
-                        if computers.all_connected(self):
-                            lan_parties.add(computers)
+            for sub_others in itertools.combinations(self.connections[computer], size-1):
+                computers = Computers((computer,)+sub_others)
+                if computers.key() not in examined:
+                    examined.add(computers.key())
+                    if computers.all_connected(self):
+                        lan_parties.add(computers)
         return lan_parties
-
 
     def visualize(self):
         with open("23.dot", "w") as f:
@@ -130,9 +134,6 @@ class LanParties:
             if computers.one_with_t():
                 count += 1
         return count
-
-    def largest(self):
-        return max(self.parties, key=lambda computers: computers.size())
 
 class Computers:
 
