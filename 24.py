@@ -1,6 +1,19 @@
 """
+Part 1:
+
 >>> GateParser().parse().simulate()
 45121475050728
+
+Part 2:
+
+>>> GateParser().parse().simulate(x=0, y=0)
+0
+
+>>> GateParser().parse().simulate(x=1, y=1)
+2
+
+>>> GateParser().parse().simulate(x=1, y=3)
+4
 """
 
 class GateParser:
@@ -46,10 +59,20 @@ class Circut:
     def get(self, wire):
         return self.wires[wire]
 
-    def simulate(self):
+    def simulate(self, x=None, y=None):
+        if x is not None:
+            self.set_wire("x", x)
+        if y is not None:
+            self.set_wire("y", y)
         for wire in list(self.wires.keys()):
             self.trigger(wire)
         return self.collect_output()
+
+    def set_wire(self, name, number):
+        for wire in self.wires:
+            if wire.startswith(name):
+                shift = int(wire[len(name):])
+                self.wires[wire] = (number >> shift) & 1
 
     def collect_output(self):
         number = 0
