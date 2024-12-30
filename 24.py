@@ -14,6 +14,9 @@ Part 2:
 
 >>> GateParser().parse().simulate(x=1, y=3)
 4
+
+>>> for x in GateParser().parse().performs_addition():
+...     print(x)
 """
 
 import itertools
@@ -77,14 +80,38 @@ class Circut:
         #            for p4 in itertools.combinations(outs, 2):
         #                yield (p1, p2, p3, p4)
 
+    def performs_addition(self):
+        falses = []
+        for z in range(47):
+            for x in [0, 1]:
+                for y in [0, 1]:
+                    for carry in [0, 1]:
+                        if z == 0:
+                            carry_bits = 0
+                            carry = 0
+                        else:
+                            carry_bits = carry<<(z-1)
+                        x_value = x<<z|carry_bits
+                        y_value = y<<z|carry_bits
+                        result = self.simulate(
+                            x=x_value,
+                            y=y_value,
+                        )
+                        if (result >> z) & 1 != (x+y+carry) & 1:
+                            falses.append((z, x, y, carry))
+        return falses
+
     def simulate(self, x=None, y=None):
+        wires = dict(self.wires)
         if x is not None:
             self.set_wire("x", x)
         if y is not None:
             self.set_wire("y", y)
         for wire in list(self.wires.keys()):
             self.trigger(wire)
-        return self.collect_output()
+        output = self.collect_output()
+        self.wires = wires
+        return output
 
     def set_wire(self, name, number):
         for wire in self.wires:
