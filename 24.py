@@ -16,6 +16,8 @@ Part 2:
 4
 """
 
+import itertools
+
 class GateParser:
 
     def parse(self):
@@ -46,6 +48,7 @@ class Circut:
     def __init__(self):
         self.wires = {}
         self.gate_triggers = {}
+        self.outs = set()
 
     def is_available(self, wire):
         return wire in self.wires
@@ -58,6 +61,21 @@ class Circut:
 
     def get(self, wire):
         return self.wires[wire]
+
+    def pairs_of_gates(self):
+        # These are all too expensive. But many are probably not valid because
+        # they would create loops.
+        for p in itertools.combinations(self.outs, 8):
+            yield p
+        #outs = self.outs
+        #for p1 in itertools.combinations(outs, 2):
+        #    outs = outs ^ set(p1)
+        #    for p2 in itertools.combinations(outs, 2):
+        #        outs = outs ^ set(p2)
+        #        for p3 in itertools.combinations(outs, 2):
+        #            outs = outs ^ set(p3)
+        #            for p4 in itertools.combinations(outs, 2):
+        #                yield (p1, p2, p3, p4)
 
     def simulate(self, x=None, y=None):
         if x is not None:
@@ -96,12 +114,15 @@ class Circut:
         self.wires[name] = value
 
     def add_and(self, a, b, out):
+        self.outs.add(out)
         AndGate(a, b, out).add(self)
 
     def add_xor(self, a, b, out):
+        self.outs.add(out)
         XorGate(a, b, out).add(self)
 
     def add_or(self, a, b, out):
+        self.outs.add(out)
         OrGate(a, b, out).add(self)
 
 class Gate:
