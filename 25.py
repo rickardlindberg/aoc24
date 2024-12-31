@@ -1,9 +1,6 @@
 """
 Part 1:
 
->>> SchematicsParser().parse()
-Schematics: locks=250, keys=250
-
 >>> SchematicsParser().parse().count_fit()
 2950
 """
@@ -16,7 +13,7 @@ class SchematicsParser:
 
     def parse_text(self, text):
         """
-        >>> SchematicsParser().parse_text("\\n".join([
+        >>> example = SchematicsParser().parse_text("\\n".join([
         ...     "#####",
         ...     ".####",
         ...     ".####",
@@ -24,10 +21,7 @@ class SchematicsParser:
         ...     ".#.#.",
         ...     ".#...",
         ...     ".....",
-        ... ])).locks[0]
-        Lock: [0, 5, 3, 4, 3]
-
-        >>> SchematicsParser().parse_text("\\n".join([
+        ...     "",
         ...     ".....",
         ...     "#....",
         ...     "#....",
@@ -35,25 +29,34 @@ class SchematicsParser:
         ...     "#.#.#",
         ...     "#.###",
         ...     "#####",
-        ... ])).keys[0]
+        ... ]))
+        >>> example
+        Schematics: locks=1, keys=1
+
+        >>> example.locks[0]
+        Lock: [0, 5, 3, 4, 3]
+
+        >>> example.keys[0]
         Key: [5, 0, 2, 1, 3]
         """
         schematics = Schematics()
         for schematic in text.split("\n\n"):
-            rows = schematic.splitlines()
-            assert len(rows) == 7
-            for row in rows:
-                assert len(row) == 5
-            inner = rows[1:6]
-            assert len(inner) == 5
-            if rows[0] == "#####":
-                assert rows[-1] == "....."
-                schematics.add_lock(Lock(self.parse_grid(inner)))
-            else:
-                assert rows[0] == "....."
-                assert rows[-1] == "#####"
-                schematics.add_key(Key(self.parse_grid(list(reversed(inner)))))
+            self.parse_schematic(schematics, schematic.splitlines())
         return schematics
+
+    def parse_schematic(self, schematics, rows):
+        assert len(rows) == 7
+        for row in rows:
+            assert len(row) == 5
+        inner = rows[1:6]
+        assert len(inner) == 5
+        if rows[0] == "#####":
+            assert rows[-1] == "....."
+            schematics.add_lock(Lock(self.parse_grid(inner)))
+        else:
+            assert rows[0] == "....."
+            assert rows[-1] == "#####"
+            schematics.add_key(Key(self.parse_grid(list(reversed(inner)))))
 
     def parse_grid(self, rows):
         count = []
