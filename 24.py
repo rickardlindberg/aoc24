@@ -15,8 +15,25 @@ Part 2:
 >>> GateParser().parse().simulate(x=1, y=3)
 4
 
->>> for x in GateParser().parse().performs_addition():
-...     print(x)
+>>> sorted(list(GateParser().parse().find_input_dependencies("z00")))
+['x00', 'y00']
+
+>>> sorted(list(GateParser().parse().find_input_dependencies("z01")))
+['x00', 'x01', 'y00', 'y01']
+
+>>> sorted(list(GateParser().parse().find_input_dependencies("z02")))
+['x00', 'x01', 'x02', 'y00', 'y01', 'y02']
+
+>>> f"{1:02d}"
+'01'
+
+>>> set([1,2,3]) ^ set([1,2,4])
+{3, 4}
+
+>>> GateParser().parse().find_first_wrong_dependency()
+
+#>>> for x in GateParser().parse().performs_addition():
+#...     print(x)
 
 TODO: find what inputs z0..n depends on. Should be increasing...
 """
@@ -54,6 +71,25 @@ class Circut:
         self.wires = {}
         self.gate_triggers = {}
         self.outs = set()
+        self.dependencies = {}
+
+    def find_first_wrong_dependency(self):
+        expected = set()
+        for z in range(47):
+            expected.add(f"x{z:02d}")
+            expected.add(f"y{z:02d}")
+            actual = self.find_input_dependencies(f"z{z:02d}")
+            assert actual == expected, (z, expected, actual)
+
+    def find_input_dependencies(self, out):
+        fringe = [out]
+        inputs = set()
+        while fringe:
+            wire = fringe.pop(0)
+            if wire.startswith("x") or wire.startswith("y"):
+                inputs.add(wire)
+            fringe.extend(self.dependencies.get(wire, []))
+        return inputs
 
     def is_available(self, wire):
         return wire in self.wires
@@ -144,14 +180,20 @@ class Circut:
 
     def add_and(self, a, b, out):
         self.outs.add(out)
+        assert out not in self.dependencies
+        self.dependencies[out] = [a, b]
         AndGate(a, b, out).add(self)
 
     def add_xor(self, a, b, out):
         self.outs.add(out)
+        assert out not in self.dependencies
+        self.dependencies[out] = [a, b]
         XorGate(a, b, out).add(self)
 
     def add_or(self, a, b, out):
         self.outs.add(out)
+        assert out not in self.dependencies
+        self.dependencies[out] = [a, b]
         OrGate(a, b, out).add(self)
 
 class Gate:
