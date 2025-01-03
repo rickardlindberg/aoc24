@@ -34,8 +34,6 @@ Part 2:
 
 #>>> for x in GateParser().parse().performs_addition():
 #...     print(x)
-
-TODO: find what inputs z0..n depends on. Should be increasing...
 """
 
 import itertools
